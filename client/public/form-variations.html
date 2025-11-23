@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Urly Byrd - Offer Form Variations</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+    }
+    .variation {
+      background: white;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      page-break-inside: avoid;
+    }
+    .variation h2 {
+      color: #0066cc;
+      margin-top: 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .screenshot-placeholder {
+      background: #fafafa;
+      border: 2px dashed #ccc;
+      padding: 40px;
+      text-align: center;
+      color: #666;
+      margin: 15px 0;
+    }
+    .description {
+      background: #fff9e6;
+      padding: 15px;
+      border-left: 4px solid #ffcc00;
+      margin-bottom: 15px;
+    }
+    .form-state {
+      display: inline-block;
+      background: #e3f2fd;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+    @media print {
+      .variation {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📸 Urly Byrd Offer Form - All Variations & States</h1>
+    <p><strong>Instructions:</strong> Open the create offer form and capture screenshots matching each variation below.</p>
+    
+    <div class="variation">
+      <h2>1. Initial Empty State</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Form immediately after clicking "Create Offer" button<br>
+        <strong>State:</strong> <span class="form-state">Empty</span><br>
+        <strong>Settings:</strong> Default offer type (Percentage), Default duration type (End Date & Time)
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Initial empty form</div>
+    </div>
+
+    <div class="variation">
+      <h2>2. Offer Type: Percentage Off</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Form with Percentage offer type selected<br>
+        <strong>State:</strong> <span class="form-state">Empty</span><br>
+        <strong>Visible Fields:</strong> Percentage Off field, Original Price<br>
+        <strong>Settings:</strong> Offer Type = Percentage
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Percentage offer type</div>
+    </div>
+
+    <div class="variation">
+      <h2>3. Offer Type: Dollar Amount Off</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Form with Dollar Amount offer type selected<br>
+        <strong>State:</strong> <span class="form-state">Empty</span><br>
+        <strong>Visible Fields:</strong> Dollar Off field, Original Price<br>
+        <strong>Settings:</strong> Offer Type = Dollar Amount
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Dollar amount offer type</div>
+    </div>
+
+    <div class="variation">
+      <h2>4. Offer Type: BOGO (Buy One Get One)</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Form with BOGO offer type selected<br>
+        <strong>State:</strong> <span class="form-state">Empty</span><br>
+        <strong>Visible Fields:</strong> Buy Quantity, Get Quantity, Original Price<br>
+        <strong>Settings:</strong> Offer Type = BOGO
+      </div>
+      <div class="screenshot-placeholder">Screenshot: BOGO offer type</div>
+    </div>
+
+    <div class="variation">
+      <h2>5. Offer Type: Spend Threshold</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Form with Spend Threshold offer type selected<br>
+        <strong>State:</strong> <span class="form-state">Empty</span><br>
+        <strong>Visible Fields:</strong> Minimum Spend, Discount Amount, Original Price<br>
+        <strong>Settings:</strong> Offer Type = Spend Threshold
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Spend threshold offer type</div>
+    </div>
+
+    <div class="variation">
+      <h2>6. Duration Type: End Date & Time</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Duration section with End Date & Time option<br>
+        <strong>State:</strong> <span class="form-state">Empty</span><br>
+        <strong>Visible Fields:</strong> Start Time (datetime-local), End Date & Time (datetime-local)<br>
+        <strong>Settings:</strong> Duration Type = End Date & Time<br>
+        <strong>Focus on:</strong> Start Time field and End Date field
+      </div>
+      <div class="screenshot-placeholder">Screenshot: End Date & Time duration type</div>
+    </div>
+
+    <div class="variation">
+      <h2>7. Duration Type: Use By Date (Redemption Deadline)</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Duration section with Use By Date option<br>
+        <strong>State:</strong> <span class="form-state">Empty</span><br>
+        <strong>Visible Fields:</strong> Start Time (datetime-local), Use By Date (date input)<br>
+        <strong>Settings:</strong> Duration Type = Use By Date<br>
+        <strong>Focus on:</strong> Start Time field and Use By Date field
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Use By Date duration type</div>
+    </div>
+
+    <div class="variation">
+      <h2>8. Validation Errors - Missing Required Fields</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Form after attempting to submit without filling required fields<br>
+        <strong>State:</strong> <span class="form-state">Validation Errors</span><br>
+        <strong>Action:</strong> Click submit with empty form<br>
+        <strong>Visible:</strong> Red error messages for Title, Description, Menu Item, Start Time, End Date, etc.
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Validation errors - empty fields</div>
+    </div>
+
+    <div class="variation">
+      <h2>9. Validation Error: Start Time in Past</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Error when start time is set to yesterday<br>
+        <strong>State:</strong> <span class="form-state">Validation Error</span><br>
+        <strong>Setup:</strong> Set Start Time to yesterday, attempt submit<br>
+        <strong>Error Message:</strong> "Start Time cannot be in the past"
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Start time past error</div>
+    </div>
+
+    <div class="variation">
+      <h2>10. Validation Error: Start Time After End Time</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Error when start time is after end time<br>
+        <strong>State:</strong> <span class="form-state">Validation Error</span><br>
+        <strong>Setup:</strong> Set Start Time to 2 hours from now, End Date to 1 hour from now<br>
+        <strong>Error Message:</strong> "Start Time must be before End Date & Time"
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Start after end error</div>
+    </div>
+
+    <div class="variation">
+      <h2>11. Completely Filled Form - Percentage Offer</h2>
+      <div class="description">
+        <strong>What to capture:</strong> All fields filled correctly with Percentage offer<br>
+        <strong>State:</strong> <span class="form-state">Complete</span><br>
+        <strong>Example Data:</strong>
+        <ul>
+          <li>Title: "20% Off Lunch Special"</li>
+          <li>Description: "Limited time lunch offer"</li>
+          <li>Menu Item: "Lunch Combo"</li>
+          <li>Offer Type: Percentage</li>
+          <li>Percentage Off: 20</li>
+          <li>Original Price: 50</li>
+          <li>Start Time: Current time</li>
+          <li>End Date: Tomorrow</li>
+        </ul>
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Complete form - Percentage</div>
+    </div>
+
+    <div class="variation">
+      <h2>12. Completely Filled Form - BOGO Offer</h2>
+      <div class="description">
+        <strong>What to capture:</strong> All fields filled correctly with BOGO offer<br>
+        <strong>State:</strong> <span class="form-state">Complete</span><br>
+        <strong>Example Data:</strong>
+        <ul>
+          <li>Title: "Buy 1 Get 1 Free Coffee"</li>
+          <li>Menu Item: "Coffee"</li>
+          <li>Offer Type: BOGO</li>
+          <li>Buy Quantity: 1</li>
+          <li>Get Quantity: 1</li>
+        </ul>
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Complete form - BOGO</div>
+    </div>
+
+    <div class="variation">
+      <h2>13. Advanced Settings Section</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Advanced Settings section expanded<br>
+        <strong>Visible Fields:</strong> ZIP Code, Original Price, Max Clicks Allowed<br>
+        <strong>Focus on:</strong> This section specifically
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Advanced Settings section</div>
+    </div>
+
+    <div class="variation">
+      <h2>14. Notifications Section</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Notifications section<br>
+        <strong>Visible Fields:</strong> Coupon Delivery Method (SMS/Email/In-App)<br>
+        <strong>Focus on:</strong> Delivery method options
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Notifications section</div>
+    </div>
+
+    <div class="variation">
+      <h2>15. Campaign Folders Section</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Campaign Folders section<br>
+        <strong>Visible:</strong> Folder selection/creation interface<br>
+        <strong>Focus on:</strong> How offers can be organized into folders
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Campaign Folders section</div>
+    </div>
+
+    <div class="variation">
+      <h2>16. Customer Acquisition Section</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Customer Acquisition section<br>
+        <strong>Visible Fields:</strong> Click Budget, Max Clicks Allowed, Pay-per-click settings<br>
+        <strong>Focus on:</strong> Budget and acquisition controls
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Customer Acquisition section</div>
+    </div>
+
+    <div class="variation">
+      <h2>17. Redemption Settings Section</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Redemption Settings section<br>
+        <strong>Visible Fields:</strong> Redemption Limit, Max Per Customer<br>
+        <strong>Focus on:</strong> Redemption controls
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Redemption Settings section</div>
+    </div>
+
+    <div class="variation">
+      <h2>18. Full Form Scroll View (Top Half)</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Top half of form showing Basic Info and Offer Type sections<br>
+        <strong>State:</strong> <span class="form-state">Complete</span><br>
+        <strong>Purpose:</strong> Show overall form layout and flow
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Form top half</div>
+    </div>
+
+    <div class="variation">
+      <h2>19. Full Form Scroll View (Bottom Half)</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Bottom half showing Duration, Advanced, and Acquisition sections<br>
+        <strong>State:</strong> <span class="form-state">Complete</span><br>
+        <strong>Purpose:</strong> Show overall form layout and flow
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Form bottom half</div>
+    </div>
+
+    <div class="variation">
+      <h2>20. Mobile View (if responsive)</h2>
+      <div class="description">
+        <strong>What to capture:</strong> Form on mobile/narrow viewport<br>
+        <strong>Setup:</strong> Resize browser to ~375px width or use mobile device<br>
+        <strong>Purpose:</strong> Show responsive behavior
+      </div>
+      <div class="screenshot-placeholder">Screenshot: Mobile view</div>
+    </div>
+
+  </div>
+
+  <div style="background: #fff; padding: 20px; margin-top: 40px; border-radius: 8px;">
+    <h2>📋 Screenshot Checklist</h2>
+    <p><strong>How to use this guide:</strong></p>
+    <ol>
+      <li>Log into Urly Byrd as a merchant</li>
+      <li>Click the "Create Offer" button (rocket icon)</li>
+      <li>Work through each variation above</li>
+      <li>Take a screenshot for each state</li>
+      <li>Name screenshots matching the variation numbers (e.g., "01-initial-empty.png")</li>
+    </ol>
+    
+    <p><strong>Key Focus Areas for Workflow Analysis:</strong></p>
+    <ul>
+      <li>⏰ <strong>Start Time Field:</strong> Mandatory field in Duration section (variations #6, #7)</li>
+      <li>🔴 <strong>Validation Errors:</strong> How errors are displayed (variations #8, #9, #10)</li>
+      <li>🔄 <strong>Dynamic Fields:</strong> How fields change based on offer type selection (variations #2-5)</li>
+      <li>📅 <strong>Duration Options:</strong> Two different date input patterns (variations #6-7)</li>
+      <li>📱 <strong>Form Sections:</strong> Seven major sections of the form (variations #13-17)</li>
+    </ul>
+  </div>
+</body>
+</html>
