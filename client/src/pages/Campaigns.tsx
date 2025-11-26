@@ -53,9 +53,9 @@ function calculateCampaignMetrics(offers: Offer[]): CampaignMetrics {
   // Conversion rate: redemptions / impressions
   const conversionRate = totalViews > 0 ? (totalRedemptions / totalViews) * 100 : 0;
   
-  // clickBudgetDollars = allocated budget in dollars (integer)
+  // clickBudgetDollars = allocated budget in dollars (numeric, e.g., 25.50)
   const budgetSpent = offers.reduce((sum, offer) => {
-    return sum + (offer.clickBudgetDollars ?? 0);
+    return sum + parseFloat(offer.clickBudgetDollars as any || "0");
   }, 0);
   
   return {

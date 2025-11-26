@@ -30,32 +30,32 @@ export function validateOfferAgainstTier(
   if (offerData.addType === "countdown" && !limits.allowCountdown) {
     errors.push({
       field: "addType",
-      message: getUpgradeMessage(tier, "GLIDE", "countdown"),
-      upgradeRequired: "GLIDE",
+      message: getUpgradeMessage(tier, "ASCEND", "countdown"),
+      upgradeRequired: "ASCEND",
     });
   }
 
   if (offerData.campaignFolder && !limits.allowFolders) {
     errors.push({
       field: "campaignFolder",
-      message: getUpgradeMessage(tier, "GLIDE", "folders"),
-      upgradeRequired: "GLIDE",
+      message: getUpgradeMessage(tier, "ASCEND", "folders"),
+      upgradeRequired: "ASCEND",
     });
   }
 
   if ((offerData.notifyOnTargetMet || offerData.notifyOnPoorPerformance) && !limits.allowNotifications) {
     errors.push({
       field: "notifications",
-      message: getUpgradeMessage(tier, "GLIDE", "notifications"),
-      upgradeRequired: "GLIDE",
+      message: getUpgradeMessage(tier, "ASCEND", "notifications"),
+      upgradeRequired: "ASCEND",
     });
   }
 
   if (offerData.autoExtend && !limits.allowAutoExtend) {
     errors.push({
       field: "autoExtend",
-      message: getUpgradeMessage(tier, "GLIDE", "autoExtend"),
-      upgradeRequired: "GLIDE",
+      message: getUpgradeMessage(tier, "ASCEND", "autoExtend"),
+      upgradeRequired: "ASCEND",
     });
   }
 
@@ -130,13 +130,13 @@ function getRequiredTierForOfferType(offerType: string): MembershipTier {
 function getRequiredTierForDeliveryMethod(method: string): MembershipTier {
   if (method === "coupon_codes") return "NEST";
   if (method === "text_message_alerts") return "FREEBYRD";
-  if (method === "mms_based_coupons" || method === "mobile_app_based_coupons") return "GLIDE";
+  if (method === "mms_based_coupons" || method === "mobile_app_based_coupons") return "ASCEND";
   if (method === "mobile_wallet_passes") return "SOAR";
   return "SOAR";
 }
 
 function getNextTier(currentTier: MembershipTier): MembershipTier {
-  const tierOrder: MembershipTier[] = ["NEST", "FREEBYRD", "GLIDE", "SOAR", "SOAR_PLUS", "SOAR_PLATINUM"];
+  const tierOrder: MembershipTier[] = ["NEST", "FREEBYRD", "ASCEND", "SOAR", "SOAR_PLUS", "SOAR_PLATINUM"];
   const currentIndex = tierOrder.indexOf(currentTier);
   if (currentIndex < tierOrder.length - 1) {
     return tierOrder[currentIndex + 1];

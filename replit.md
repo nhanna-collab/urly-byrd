@@ -3,8 +3,29 @@
 ## Overview
 Urly Byrd is a flash marketing platform for local businesses, enabling them to create and manage time-limited flash sale campaigns to liquidate excess inventory and generate immediate revenue. The platform supports tiered merchant memberships, tools to create urgency in offers, and customer-facing features like deal browsing, SMS notifications, and a referral/rewards system.
 
+## 🚫 CRITICAL MONETARY POLICY: DOLLARS ONLY - NO PENNIES
+**This system uses DOLLARS exclusively. Never use pennies, cents, or integer penny values anywhere.**
+- All database monetary fields: `numeric(10,2)` storing dollars
+- All calculations: decimal dollar amounts (e.g., 1.65, 500.00, 0.021)
+- All API contracts: dollar amounts only (e.g., `amountInDollars`)
+- All displays: formatted as `$X.XX`
+- See `NO_PENNIES.md` and `shared/monetaryConstants.ts` for policy and safeguards
+- **NEVER multiply or divide by 100** - this violates the dollars-only policy
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+**Home Page**: The home page route (`/`) should always be the **Home** page (with lightning bolt animation and scrolling ticker), NOT OfferCreator or FlashMarketing.
+**CRITICAL UI RULE - NUMBER INPUT FIELDS**: ALL number input fields must be EXACTLY this size:
+- Width: `w-16` (narrow, 1/4 size)
+- Height: `h-8` (standard input height, matches other fields)
+- Text: `text-sm` (normal readable size)
+- Example: `className="h-8 text-sm w-16"`
+This applies to ALL numeric inputs including budgets, prices, quantities, max clicks, etc. NEVER deviate from this sizing.
+
+## Terminology
+**CRITICAL**: Use these exact terms when referring to countdown features:
+- **Countdown Timer**: When a customer opens an ad/coupon, a timer starts ticking for them to accept, reject, or forward the coupon. This is the initial decision timer.
+- **Time Bomb**: After the customer clicks to accept the coupon, another countdown starts for them to actually use/redeem the coupon at the merchant location. This is the redemption deadline timer.
 
 ## System Architecture
 

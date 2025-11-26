@@ -147,7 +147,10 @@ export interface IStorage {
   getDashboardStats(merchantId: string): Promise<{ totalClicks: number; totalViews: number; clickThroughRate: number; totalCustomers: number }>;
   
   // Bank management operations
-  addMerchantBankFunds(merchantId: string, amountInCents: number): Promise<User | undefined>;
+  addMerchantBankFunds(merchantId: string, amountInDollars: number): Promise<User | undefined>;
+  allocateMerchantBudget(merchantId: string, textBudgetDollars: number, ripsBudgetDollars: number): Promise<User | undefined>;
+  deductMerchantBudgets(merchantId: string, textDollars: number, ripsDollars: number): Promise<void>;
+  addToMerchantBudgets(merchantId: string, textDollars: number, ripsDollars: number): Promise<void>;
   getCustomerAcquisitionClicks(merchantId: string): Promise<CustomerAcquisitionClick[]>;
   
   // Campaign folders
@@ -803,7 +806,7 @@ export class DatabaseStorage implements IStorage {
     const pricingBreakdown = (usage.pricingBreakdown as any[]) || [];
     
     // Calculate cost based on tier and lifetime usage
-    let totalCostCents = 0;
+    let totalCostDollars = 0;
     let remainingCount = count;
     let currentLifetime = oldLifetimeTextsSent;
     
@@ -813,9 +816,9 @@ export class DatabaseStorage implements IStorage {
       pricingBreakdown.push({
         from: currentLifetime + 1,
         to: currentLifetime + freeTexts,
-        rateCents: 0,
+        rateDollars: 0,
         count: freeTexts,
-        amountCents: 0,
+        amountDollars: 0,
         tier: 'FREE_TRIAL'
       });
       remainingCount -= freeTexts;
@@ -824,65 +827,66 @@ export class DatabaseStorage implements IStorage {
     
     // FREEBYRD tier: tiered pricing based on lifetime usage
     if (merchant.membershipTier === 'FREEBYRD' && remainingCount > 0) {
-      // Texts 101-3000: 2.1 cents each
+      // Texts 101-3000: $0.021 each
       if (currentLifetime < 3000) {
         const bandATexts = Math.min(remainingCount, 3000 - currentLifetime);
-        const bandACost = Math.round(bandATexts * 2.1);
+        const bandACost = parseFloat((bandATexts * 0.021).toFixed(2));
         pricingBreakdown.push({
           from: currentLifetime + 1,
           to: currentLifetime + bandATexts,
-          rateCents: 2.1,
+          rateDollars: 0.021,
           count: bandATexts,
-          amountCents: bandACost,
+          amountDollars: bandACost,
           tier: 'FREEBYRD'
         });
-        totalCostCents += bandACost;
+        totalCostDollars += bandACost;
         remainingCount -= bandATexts;
         currentLifetime += bandATexts;
       }
       
-      // Texts 3001+: 1.3 cents each
+      // Texts 3001+: $0.013 each
       if (remainingCount > 0) {
-        const bandBCost = Math.round(remainingCount * 1.3);
+        const bandBCost = parseFloat((remainingCount * 0.013).toFixed(2));
         pricingBreakdown.push({
           from: currentLifetime + 1,
           to: currentLifetime + remainingCount,
-          rateCents: 1.3,
+          rateDollars: 0.013,
           count: remainingCount,
-          amountCents: bandBCost,
+          amountDollars: bandBCost,
           tier: 'FREEBYRD'
         });
-        totalCostCents += bandBCost;
+        totalCostDollars += bandBCost;
         remainingCount = 0;
       }
     }
     // Other tiers: use monthly allocations and tier rates
     else if (remainingCount > 0) {
       // For non-FREEBYRD tiers, charge based on tier rate after free trial
-      // This is simplified - you may want to implement monthly allocations for GLIDE, SOAR, etc.
-      const rateCents = 0.79; // Default Twilio rate for other tiers
-      const cost = Math.round(remainingCount * rateCents);
+      // This is simplified - you may want to implement monthly allocations for ASCEND, SOAR, etc.
+      const rateDollars = 0.0079; // Default Twilio rate for other tiers
+      const cost = parseFloat((remainingCount * rateDollars).toFixed(2));
       pricingBreakdown.push({
         from: currentLifetime + 1,
         to: currentLifetime + remainingCount,
-        rateCents: rateCents,
+        rateDollars: rateDollars,
         count: remainingCount,
-        amountCents: cost,
+        amountDollars: cost,
         tier: merchant.membershipTier
       });
-      totalCostCents += cost;
+      totalCostDollars += cost;
       remainingCount = 0;
     }
 
     const newTextsSent = usage.textsSent + count;
-    const newTotalFee = (usage.totalFee || 0) + totalCostCents;
+    const currentTotalFee = parseFloat(usage.totalFee as any || "0");
+    const newTotalFee = (currentTotalFee + totalCostDollars).toFixed(2);
 
     const [updated] = await db
       .update(smsUsage)
       .set({
         textsSent: newTextsSent,
         totalFee: newTotalFee,
-        overageFee: totalCostCents, // Store incremental cost in overageFee for now
+        overageFee: totalCostDollars.toFixed(2), // Store incremental cost in overageFee
         billingTier: merchant.membershipTier,
         pricingBreakdown: pricingBreakdown,
         updatedAt: new Date(),
@@ -950,9 +954,9 @@ export class DatabaseStorage implements IStorage {
       // FREEBYRD has unlimited texts but pays per text
       // Check lifetime usage to determine rate
       if (merchant.lifetimeTextsSent < 3000) {
-        costPerText = 2.1; // 2.1 cents
+        costPerText = 0.021; // $0.021
       } else {
-        costPerText = 1.3; // 1.3 cents
+        costPerText = 0.013; // $0.013
       }
       
       // No hard limit for FREEBYRD, but warn about costs
@@ -966,7 +970,7 @@ export class DatabaseStorage implements IStorage {
         tierName: merchant.membershipTier,
       };
     } else {
-      // GLIDE, SOAR, SOAR_PLUS, SOAR_PLATINUM have monthly allocations
+      // ASCEND, SOAR, SOAR_PLUS, SOAR_PLATINUM have monthly allocations
       monthlyLimit = tierCaps.pricing.monthlyTexts || 0;
       costPerText = tierCaps.pricing.textCostStart;
       
@@ -1392,16 +1396,79 @@ export class DatabaseStorage implements IStorage {
 
   // Bank management operations
   
-  async addMerchantBankFunds(merchantId: string, amountInCents: number): Promise<User | undefined> {
+  async addMerchantBankFunds(merchantId: string, amountInDollars: number): Promise<User | undefined> {
     const [updatedUser] = await db
       .update(users)
       .set({
-        merchantBank: sql`${users.merchantBank} + ${amountInCents}`,
+        merchantBank: sql`${users.merchantBank} + ${amountInDollars}`,
         updatedAt: new Date(),
       })
       .where(eq(users.id, merchantId))
       .returning();
     return updatedUser;
+  }
+
+  async allocateMerchantBudget(merchantId: string, textBudgetDollars: number, ripsBudgetDollars: number): Promise<User | undefined> {
+    // Get current user to check available balance
+    const [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, merchantId))
+      .limit(1);
+
+    if (!currentUser) {
+      throw new Error("Merchant not found");
+    }
+
+    // Calculate the difference from current allocations
+    const currentTextBudget = parseFloat(currentUser.merchantTextBudget as any) || 0;
+    const currentRipsBudget = parseFloat(currentUser.merchantRipsBudget as any) || 0;
+    const textDiff = textBudgetDollars - currentTextBudget;
+    const ripsDiff = ripsBudgetDollars - currentRipsBudget;
+    const totalDiff = textDiff + ripsDiff;
+
+    // Check if there's enough bank balance
+    const currentBank = parseFloat(currentUser.merchantBank as any) || 0;
+    if (totalDiff > currentBank) {
+      throw new Error("Insufficient bank balance");
+    }
+
+    // Update the budgets and decrement bank
+    const newBankBalance = (currentBank - totalDiff).toFixed(2);
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        merchantBank: newBankBalance,
+        merchantTextBudget: textBudgetDollars.toFixed(2),
+        merchantRipsBudget: ripsBudgetDollars.toFixed(2),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, merchantId))
+      .returning();
+
+    return updatedUser;
+  }
+
+  async deductMerchantBudgets(merchantId: string, textDollars: number, ripsDollars: number): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        merchantTextBudget: sql`${users.merchantTextBudget} - ${textDollars}`,
+        merchantRipsBudget: sql`${users.merchantRipsBudget} - ${ripsDollars}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, merchantId));
+  }
+
+  async addToMerchantBudgets(merchantId: string, textDollars: number, ripsDollars: number): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        merchantTextBudget: sql`${users.merchantTextBudget} + ${textDollars}`,
+        merchantRipsBudget: sql`${users.merchantRipsBudget} + ${ripsDollars}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, merchantId));
   }
 
   async getCustomerAcquisitionClicks(merchantId: string): Promise<CustomerAcquisitionClick[]> {
@@ -1608,7 +1675,7 @@ export class DatabaseStorage implements IStorage {
     
     const acquisitionClicks = await this.getCustomerAcquisitionClicks(merchantId);
     const totalClicks = acquisitionClicks.length;
-    const totalSpent = acquisitionClicks.reduce((sum, click) => sum + (click.costInCents || 0), 0);
+    const totalSpent = acquisitionClicks.reduce((sum, click) => sum + parseFloat(click.costInDollars as any || "0"), 0);
     const avgCostPerClick = totalClicks > 0 ? totalSpent / totalClicks : 0;
     
     const recentClaims = await db.select({

@@ -1,12 +1,15 @@
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import birdLogo from "@assets/image_1763871339972.png";
+import sunriseLogo from "@assets/UBphone-icon_1762744086414.png";
+import urlyByrdText from "@assets/Urly Byrd Logo Design_1762135693666.png";
+import logo1 from "@assets/logo1_1764034662638.png";
+import sunIcon from "@assets/image_1764035624356.png";
 import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench } from "lucide-react";
+import { Wrench, Sparkles } from "lucide-react";
 import { InfoSheet } from "@/components/InfoSheet";
 
 export default function Navbar() {
@@ -59,17 +62,38 @@ export default function Navbar() {
       <nav className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between gap-4 py-4 relative">
-            <Link href="/">
-              <button
-                className="shrink-0 p-2 hover:bg-accent rounded-md transition-colors"
-                data-testid="nav-home-icon"
-              >
+            {/* Logo on left - sunrise animation only on home page, icon logo on other pages */}
+            <Link href="/" className="shrink-0 relative">
+              {location === "/" ? (
+                <>
+                  {/* Sun that rises from behind as you scroll */}
+                  <img 
+                    src={sunIcon} 
+                    alt="Sunrise" 
+                    className="absolute left-1/2 -translate-x-1/2 h-[72px] w-[72px] transition-all duration-[1200ms] rounded-full"
+                    style={{
+                      top: `${Math.max(48 - scrollPosition * 0.02, 42)}%`,
+                      transform: 'translate(-50%, -50%)',
+                      opacity: Math.min(scrollPosition / 120, 1),
+                    }}
+                    data-testid="nav-sunrise"
+                  />
+                  {/* Main logo */}
+                  <img 
+                    src={logo1} 
+                    alt="Urly Byrd" 
+                    className="h-36 relative z-10"
+                    data-testid="nav-logo"
+                  />
+                </>
+              ) : (
                 <img 
-                  src={birdLogo} 
-                  alt="Home" 
-                  className="h-12 w-12"
+                  src={sunriseLogo} 
+                  alt="Urly Byrd Home" 
+                  className="h-12"
+                  data-testid="nav-icon-logo"
                 />
-              </button>
+              )}
             </Link>
             
             {location !== "/" && location !== "/start-campaigns" && (
@@ -227,7 +251,16 @@ export default function Navbar() {
             )}
             
             <div className="flex items-center gap-2">
-              {user && location === "/" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setLocation("/pricing-trial")}
+                className="shrink-0"
+                data-testid="nav-pricing-trial-icon"
+              >
+                <Sparkles className="h-6 w-6" />
+              </Button>
+              {user && (
                 <Button
                   variant="ghost"
                   size="icon"

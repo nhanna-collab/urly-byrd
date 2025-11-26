@@ -171,7 +171,7 @@ export default function OfferDetailPage() {
               {offer.originalPrice && (
                 <div className="flex items-center gap-3">
                   <span className="text-xl text-muted-foreground line-through">
-                    ${offer.originalPrice}
+                    ${parseFloat(offer.originalPrice as any).toFixed(2)}
                   </span>
                   <Badge variant="secondary" className="text-sm">
                     {discountText}

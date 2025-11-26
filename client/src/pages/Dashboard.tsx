@@ -9,6 +9,7 @@ import EditOfferDialog from "@/components/EditOfferDialog";
 import CustomerImport from "@/components/CustomerImport";
 import { PrintableSigns } from "@/components/PrintableSigns";
 import BankManagement from "@/components/BankManagement";
+import BankAllocation from "@/components/BankAllocation";
 import MerchantQRCode from "@/components/MerchantQRCode";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Package, TrendingUp, Clock, Archive, Plus, Edit, Trash2, Loader2, ShoppingCart, Bell, X, AlertCircle, Rocket, BarChart3, DollarSign, MousePointerClick, Percent, Users } from "lucide-react";
+import { Package, TrendingUp, Clock, Archive, Plus, Edit, Trash2, Loader2, ShoppingCart, Bell, X, AlertCircle, Rocket, BarChart3, DollarSign, MousePointerClick, Percent, Users, MessageSquare, Coins, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown } from "lucide-react";
 import CountdownTimer from "@/components/CountdownTimer";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -411,12 +412,13 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/campaign-folders"] });
       toast({
         title: "Success",
-        description: "Offer created successfully",
+        description: "Offer created successfully. Form remains populated for easy creation of similar offers.",
       });
-      setShowCreateForm(false);
-      // Notify Navbar that create form is closed
-      console.log('[Dashboard] Dispatching createFormStateChanged event after success: isOpen=false');
-      window.dispatchEvent(new CustomEvent('createFormStateChanged', { detail: { isOpen: false } }));
+      // DON'T close the form - keep it open with inputs populated for creating similar offers
+      // setShowCreateForm(false);
+      // Clear draft/duplicate mode but keep form data
+      setDraftToComplete(null);
+      setDuplicateOfferData(null);
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
@@ -581,6 +583,63 @@ export default function Dashboard() {
     },
   });
 
+  const transferToRipsMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      const response = await apiRequest("POST", "/api/bank/transfer-to-rips", { amount });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Transfer Failed",
+        description: error.message || "Could not transfer funds",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const transferToTextMutation = useMutation({
+    mutationFn: async (textCount: number) => {
+      const response = await apiRequest("POST", "/api/bank/transfer-to-text", { textCount });
+      return await response.json();
+    },
+    onMutate: async (textCount: number) => {
+      // Optimistic update - immediately update the UI
+      await queryClient.cancelQueries({ queryKey: ["/api/auth/user"] });
+      const previousUser = queryClient.getQueryData(["/api/auth/user"]);
+      
+      queryClient.setQueryData(["/api/auth/user"], (old: any) => {
+        if (!old) return old;
+        const costPerText = 0.0089; // SOAR tier rate
+        const currentBank = parseFloat(old.merchantBank || "0");
+        const currentTexts = parseFloat(old.merchantTextBudget || "0");
+        return {
+          ...old,
+          merchantBank: (currentBank - (textCount * costPerText)).toString(),
+          merchantTextBudget: (currentTexts + textCount).toString(),
+        };
+      });
+      
+      return { previousUser };
+    },
+    onError: (error: any, _, context) => {
+      // Rollback on error
+      if (context?.previousUser) {
+        queryClient.setQueryData(["/api/auth/user"], context.previousUser);
+      }
+      toast({
+        title: "Transfer Failed",
+        description: error.message || "Could not transfer funds",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+  });
+
   if (authLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -616,7 +675,7 @@ export default function Dashboard() {
                 // Navigate to offers page to see created offers
                 setLocation('/offers');
               }}
-              userTier={user.membershipTier as "NEST" | "FREEBYRD" | "GLIDE" | "SOAR"}
+              userTier={user.membershipTier as "NEST" | "FREEBYRD" | "ASCEND" | "SOAR"}
               user={user}
               menuItems={menuItems}
               folders={campaignFolders}
@@ -668,12 +727,92 @@ export default function Dashboard() {
           </div>
 
           {/* Top Row - Primary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-            <StatsCard title="Active Offers" value={activeOffers.length} icon={Package} />
-            <StatsCard title="Total Views" value={dashboardStats?.totalViews.toLocaleString() || "0"} icon={TrendingUp} />
-            <StatsCard title="Clicks" value={dashboardStats?.totalClicks.toLocaleString() || "0"} icon={MousePointerClick} data-testid="stat-clicks" />
-            <StatsCard title="Click %" value={`${dashboardStats?.clickThroughRate.toFixed(1) || "0"}%`} icon={Percent} data-testid="stat-click-rate" />
-            <StatsCard title="Customers" value={dashboardStats?.totalCustomers.toLocaleString() || "0"} icon={Users} data-testid="stat-customers" />
+          <div className="mb-6">
+            <div className="grid grid-cols-7 gap-2">
+              <div className="flex flex-col gap-2">
+                <StatsCard title="Active Offers" value={activeOffers.length} icon={Package} />
+                <StatsCard title="Customers" value={dashboardStats?.totalCustomers.toLocaleString() || "0"} icon={Users} data-testid="stat-customers" />
+              </div>
+              <StatsCard title="Total Views" value={dashboardStats?.totalViews.toLocaleString() || "0"} icon={TrendingUp} />
+              <StatsCard title="Clicks" value={dashboardStats?.totalClicks.toLocaleString() || "0"} icon={MousePointerClick} data-testid="stat-clicks" />
+              <StatsCard title="Click %" value={`${dashboardStats?.clickThroughRate.toFixed(1) || "0"}%`} icon={Percent} data-testid="stat-click-rate" />
+              {/* Text Acct with fast up arrow only (1 text per click at tier rate, hold to repeat) */}
+              <div className="space-y-2" data-testid="card-stat-text-acct">
+                <h3 className="text-sm font-medium text-muted-foreground">Text Acct</h3>
+                <Card className="bg-blue-100 dark:bg-blue-900/20">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl font-bold" data-testid="text-text-value">
+                        {Math.round(parseFloat((user as any).merchantTextBudget || "0")).toLocaleString()}
+                      </div>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-6 w-6 p-0"
+                        onClick={() => transferToTextMutation.mutate(1)}
+                        onMouseDown={() => {
+                          const interval = setInterval(() => {
+                            if (parseFloat((user as any).merchantBank || "0") >= 0.0089) {
+                              transferToTextMutation.mutate(1);
+                            }
+                          }, 50);
+                          const stopRepeat = () => {
+                            clearInterval(interval);
+                            window.removeEventListener('mouseup', stopRepeat);
+                            window.removeEventListener('mouseleave', stopRepeat);
+                          };
+                          window.addEventListener('mouseup', stopRepeat);
+                          window.addEventListener('mouseleave', stopRepeat);
+                        }}
+                        disabled={parseFloat((user as any).merchantBank || "0") < 0.0089}
+                        data-testid="button-text-up"
+                        title="Hold to add texts fast ($0.0089 each)"
+                      >
+                        <ChevronsUp className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* RIPS Acct with arrows */}
+              <div className="space-y-2" data-testid="card-stat-rips-acct">
+                <h3 className="text-sm font-medium text-muted-foreground">RIPS Acct</h3>
+                <Card className="bg-blue-100 dark:bg-blue-900/20">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl font-bold" data-testid="text-rips-value">
+                        ${parseFloat((user as any).merchantRipsBudget || "0").toFixed(2)}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-5 w-5 p-0"
+                          onClick={() => transferToRipsMutation.mutate(1)}
+                          disabled={parseFloat((user as any).merchantBank || "0") < 1 || transferToRipsMutation.isPending}
+                          data-testid="button-rips-up"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-5 w-5 p-0"
+                          onClick={() => transferToRipsMutation.mutate(-1)}
+                          disabled={parseFloat((user as any).merchantRipsBudget || "0") < 1 || transferToRipsMutation.isPending}
+                          data-testid="button-rips-down"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <StatsCard title="Bank" value={`$${Math.round(parseFloat((user as any).merchantBank || "0")).toLocaleString()}`} icon={DollarSign} data-testid="stat-bank" />
+            </div>
           </div>
 
           {/* Bottom Row - Secondary Stats */}
@@ -683,7 +822,7 @@ export default function Dashboard() {
             {user.membershipTier === 'SOAR' && (
               <StatsCard 
                 title="Bank Balance" 
-                value={`$${(((user as any).merchantBank || 0) / 100).toFixed(2)}`} 
+                value={`$${Math.round(parseFloat((user as any).merchantBank || "0"))}`} 
                 icon={DollarSign}
                 data-testid="stat-bank-balance"
               />

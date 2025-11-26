@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Check, Zap } from "lucide-react";
+import { Check, Zap, HelpCircle, LayoutGrid } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import { AuthModal } from "@/components/AuthModal";
 import type { MembershipTier } from "@shared/schema";
@@ -13,6 +13,8 @@ export default function StartCampaigns() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [lpDialogOpen, setLpDialogOpen] = useState(false);
+  const [ripsDialogOpen, setRipsDialogOpen] = useState(false);
+  const [comparisonDialogOpen, setComparisonDialogOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<MembershipTier>("NEST");
   const tiers: Array<{
     name: string;
@@ -20,6 +22,7 @@ export default function StartCampaigns() {
     description: string;
     banner?: string;
     features: string[];
+    ripsRate: string;
     cta: string;
     testId: string;
     popular?: boolean;
@@ -27,68 +30,79 @@ export default function StartCampaigns() {
   }> = [
     {
       name: "NEST",
-      price: "Free",
-      description: "Try before you buy - test flash marketing basics",
+      price: "$0 - Free Trial",
+      description: "Try Before You Buy - Test Flash Marketing Basics",
       features: [
-        "1 active offer at a time",
-        "200 texts to practice live offers",
-        "Basic offer types (% off, $ off)",
-        "Coupon codes delivery only",
-        "Perfect for testing the platform"
+        "One-time 200 text credits",
+        "Core offer types (% off, $ off)",
+        "Coupon-code delivery only",
+        "Perfect for learning Flash Marketing quickly",
+        "Real experience with launching live offers, no commitment"
       ],
-      cta: "Start Free with NEST",
+      ripsRate: "$2.77 per new customer",
+      cta: "Get Started",
       testId: "nest-beginner",
       tier: "NEST"
     },
     {
       name: "FREEBYRD",
-      price: "2.1¢ per text, drops to 1.3¢ after 3000",
-      description: "Pay as you grow with flexible text pricing",
+      price: "No Monthly Fee",
+      description: "Pay As You Go - Full Flexibility, No Monthly Fee",
       features: [
-        "3 active offers at same time",
-        "Unlimited text allocation (pay per text sent)",
-        "All offer types (BOGO, spend thresholds)",
+        "Up to 3 active offers at one time",
+        "All offer types (BOGO, thresholds, bundles)",
         "Product images & promotional videos",
-        "Must delete/deactivate to create new offers",
-        "Perfect for seasonal businesses"
+        "Access to the Urly Byrd marketplace",
+        "Create offers as needed - ideal for seasonal or occasional use",
+        "First 1,500 texts each month: 2.1¢",
+        "After that: 1.1¢ per text"
       ],
-      cta: "Fly Free with FREEBYRD",
+      ripsRate: "$2.77 per new customer",
+      cta: "Get Started",
       testId: "freebyrd-payg",
       popular: true,
       tier: "FREEBYRD"
     },
     {
-      name: "GLIDE",
-      price: "$15.95/month",
-      description: "Professional tools for organized marketing",
+      name: "ASCEND",
+      price: "$24.95/month",
+      description: "Grow Consistently - Advanced Tools + Lower Costs",
       features: [
-        "5 active offers at same time",
-        "1,600 texts per month included",
-        "Countdown timers for urgency",
-        "Campaign folders for organization",
-        "SMS notifications & auto-extend",
-        "Product images & videos",
-        "Perfect for regular promotions"
+        "Up to 5 active offers",
+        "Countdown timers for urgency & automatic time extensions",
+        "Full suite of offer types",
+        "Product images & promotional videos",
+        "Coupon card-style delivery suite",
+        "Advanced analytics suite",
+        "Batch offer-setup tools",
+        "Included 1,000 texts per month",
+        "Additional texts: 1.03¢ each",
+        "Marketplace Access: Standard inclusion"
       ],
-      cta: "Upgrade to GLIDE",
-      testId: "glide-advanced",
+      ripsRate: "$2.15 per new customer",
+      cta: "Get Started",
+      testId: "ascend-advanced",
       popular: true,
-      tier: "GLIDE"
+      tier: "ASCEND"
     },
     {
       name: "SOAR",
-      price: "$24.95/month",
-      description: "Enterprise features for serious growth",
+      price: "$38.95/month",
+      description: "Maximum Performance - AI-Driven Optimization + ABORIPS",
       features: [
-        "20 active offers at same time",
-        "2,500 texts per month included",
-        "All GLIDE features included",
-        "Customer acquisition ($1.65/new customer)",
-        "Mobile wallet passes",
-        "Comprehensive analytics & reports",
-        "Perfect for high-volume merchants"
+        "Up to 10 active offers",
+        "Dual countdown timers + time-bomb triggers (premium feature)",
+        "SMS notifications & auto-extend",
+        "Full suite of offer types",
+        "Advanced analytics powered by ABORIPS behavioral intelligence",
+        "Full coupon card suite",
+        "AI-enhanced batch-offer creation tools",
+        "Included 2,000 texts per month",
+        "Additional texts: 0.89¢ each",
+        "Marketplace: Full participation + priority placement"
       ],
-      cta: "Scale with SOAR",
+      ripsRate: "$1.65 per new customer",
+      cta: "Get Started",
       testId: "soar-pro",
       tier: "SOAR"
     },
@@ -98,13 +112,14 @@ export default function StartCampaigns() {
       description: "Maximum capacity for enterprise operations",
       features: [
         "50 active offers at same time",
-        "7,700 texts per month included",
+        "8,000 texts per month included",
         "All SOAR features included",
         "Customer acquisition ($1.65/new customer)",
         "Mobile wallet passes",
         "Comprehensive analytics & reports",
         "Perfect for very high-volume merchants"
       ],
+      ripsRate: "$1.65 per new customer",
       cta: "Go BIG with SOAR PLUS",
       testId: "soar-plus-enterprise",
       tier: "SOAR_PLUS"
@@ -122,6 +137,7 @@ export default function StartCampaigns() {
         "Comprehensive analytics & reports",
         "Perfect for enterprise-scale operations"
       ],
+      ripsRate: "$1.65 per new customer",
       cta: "Dominate with SOAR PLATINUM",
       testId: "soar-platinum-ultimate",
       tier: "SOAR_PLATINUM"
@@ -129,20 +145,52 @@ export default function StartCampaigns() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-black">
       <AppHeader hideFeedback />
       <div className="mx-auto px-8 py-12">
+        <div className="flex justify-center gap-8 mb-6 py-3 bg-primary/10 border-b border-primary/20">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setComparisonDialogOpen(true)}
+                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors cursor-pointer bg-transparent border-none p-2 font-semibold text-base"
+                data-testid="link-compare-plans"
+              >
+                <LayoutGrid className="h-5 w-5" />
+                <span className="underline">Compare Plans</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent data-testid="tooltip-compare-plans">
+              View a side-by-side comparison of all plan features
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setRipsDialogOpen(true)}
+                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors cursor-pointer bg-transparent border-none p-2 font-semibold text-base"
+                data-testid="link-what-is-rips"
+              >
+                <HelpCircle className="h-5 w-5" />
+                <span className="underline">What is RIPS?</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent data-testid="tooltip-what-is-rips">
+              Learn about our customer acquisition pricing
+            </TooltipContent>
+          </Tooltip>
+        </div>
         <div className="text-center mb-16">
-          <h1 className="text-xl font-display font-bold text-foreground mb-4" data-testid="heading-start-campaigns">
+          <h1 className="text-5xl font-display font-bold text-white mb-4" data-testid="heading-start-campaigns">
             Choose Your Plan
           </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto" data-testid="text-subtitle">
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto" data-testid="text-subtitle">
             All plans come with{" "}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setLpDialogOpen(true)}
-                  className="text-primary underline hover:text-primary/80 transition-colors cursor-pointer bg-transparent border-none p-0 font-inherit"
+                  className="text-white underline hover:text-gray-300 transition-colors cursor-pointer bg-transparent border-none p-0 font-inherit"
                   data-testid="link-lp-filtering"
                 >
                   LP Filtering
@@ -175,11 +223,6 @@ export default function StartCampaigns() {
                   <div className="text-2xl font-bold text-primary my-3" data-testid={`price-${tier.testId}`}>
                     {tier.price}
                   </div>
-                  {tier.tier === "FREEBYRD" && (
-                    <div className="mb-2">
-                      <span className="font-bold text-foreground">No monthly fee</span>
-                    </div>
-                  )}
                   <CardDescription data-testid={`description-${tier.testId}`}>
                     {tier.description}
                   </CardDescription>
@@ -204,13 +247,18 @@ export default function StartCampaigns() {
                         );
                       })}
                     </ul>
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <p className="text-sm text-muted-foreground" data-testid={`rips-rate-${tier.testId}`}>
+                        <span className="font-semibold">RIPS rate:</span> {tier.ripsRate}
+                      </p>
+                      {tier.tier !== "NEST" && tier.tier !== "FREEBYRD" && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Higher tiers unlock lower RIPS rates.
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex-shrink-0">
-                    {tier.tier === "FREEBYRD" && (
-                      <p className="text-center text-sm text-muted-foreground mb-4" data-testid="text-payg-label">
-                        Minimum $5.00 to start
-                      </p>
-                    )}
                     <Button 
                       className="w-full" 
                       variant="default"
@@ -372,6 +420,175 @@ export default function StartCampaigns() {
               data-testid="button-close-lp-filtering"
             >
               Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={ripsDialogOpen} onOpenChange={setRipsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]" data-testid="dialog-rips">
+          <DialogHeader>
+            <DialogTitle data-testid="title-rips">What is RIPS?</DialogTitle>
+            <DialogDescription data-testid="description-rips">
+              RIPS (Referral Incentive Pricing System) is our customer acquisition program that helps you grow your customer base.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4" data-testid="content-rips">
+            <div>
+              <h4 className="font-semibold mb-2">How RIPS Works:</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>Pay only when new customers claim your offers</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>Higher tiers unlock lower per-customer rates</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>No upfront fees - pay as you acquire customers</span>
+                </li>
+              </ul>
+            </div>
+            <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
+              <h4 className="font-semibold mb-3">RIPS Rates by Tier:</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">NEST & FREEBYRD</span>
+                  <span className="font-semibold">$2.77 per new customer</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ASCEND</span>
+                  <span className="font-semibold">$2.15 per new customer</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">SOAR & above</span>
+                  <span className="font-semibold text-primary">$1.65 per new customer</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              The more you grow with Urly Byrd, the less you pay to acquire each new customer.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={() => setRipsDialogOpen(false)}
+              data-testid="button-close-rips"
+            >
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={comparisonDialogOpen} onOpenChange={setComparisonDialogOpen}>
+        <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto" data-testid="dialog-comparison">
+          <DialogHeader>
+            <DialogTitle data-testid="title-comparison">Plan Comparison</DialogTitle>
+            <DialogDescription data-testid="description-comparison">
+              Compare features across all Urly Byrd plans
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-x-auto" data-testid="content-comparison">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-2 font-semibold">Feature</th>
+                  <th className="text-center py-3 px-2 font-semibold">NEST</th>
+                  <th className="text-center py-3 px-2 font-semibold">FREEBYRD</th>
+                  <th className="text-center py-3 px-2 font-semibold">ASCEND</th>
+                  <th className="text-center py-3 px-2 font-semibold">SOAR</th>
+                </tr>
+              </thead>
+              <tbody className="text-muted-foreground">
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Price</td>
+                  <td className="text-center py-3 px-2">Free</td>
+                  <td className="text-center py-3 px-2">No monthly fee</td>
+                  <td className="text-center py-3 px-2">$24.95/mo</td>
+                  <td className="text-center py-3 px-2">$38.95/mo</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Active Offers</td>
+                  <td className="text-center py-3 px-2">1</td>
+                  <td className="text-center py-3 px-2">Up to 3</td>
+                  <td className="text-center py-3 px-2">Up to 5</td>
+                  <td className="text-center py-3 px-2">Up to 10</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Texts Included</td>
+                  <td className="text-center py-3 px-2">200 (one-time)</td>
+                  <td className="text-center py-3 px-2">Pay per text</td>
+                  <td className="text-center py-3 px-2">1,000/mo</td>
+                  <td className="text-center py-3 px-2">2,000/mo</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Text Rate (after included)</td>
+                  <td className="text-center py-3 px-2">-</td>
+                  <td className="text-center py-3 px-2">2.1¢ / 1.1¢</td>
+                  <td className="text-center py-3 px-2">1.03¢</td>
+                  <td className="text-center py-3 px-2">0.89¢</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Offer Types</td>
+                  <td className="text-center py-3 px-2">% off, $ off</td>
+                  <td className="text-center py-3 px-2">All types</td>
+                  <td className="text-center py-3 px-2">All types</td>
+                  <td className="text-center py-3 px-2">All types</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Product Images & Videos</td>
+                  <td className="text-center py-3 px-2">-</td>
+                  <td className="text-center py-3 px-2"><Check className="h-4 w-4 text-primary mx-auto" /></td>
+                  <td className="text-center py-3 px-2"><Check className="h-4 w-4 text-primary mx-auto" /></td>
+                  <td className="text-center py-3 px-2"><Check className="h-4 w-4 text-primary mx-auto" /></td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Countdown Timers</td>
+                  <td className="text-center py-3 px-2">-</td>
+                  <td className="text-center py-3 px-2">-</td>
+                  <td className="text-center py-3 px-2"><Check className="h-4 w-4 text-primary mx-auto" /></td>
+                  <td className="text-center py-3 px-2">Dual timers</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Auto-Extend</td>
+                  <td className="text-center py-3 px-2">-</td>
+                  <td className="text-center py-3 px-2">-</td>
+                  <td className="text-center py-3 px-2"><Check className="h-4 w-4 text-primary mx-auto" /></td>
+                  <td className="text-center py-3 px-2"><Check className="h-4 w-4 text-primary mx-auto" /></td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Analytics</td>
+                  <td className="text-center py-3 px-2">Basic</td>
+                  <td className="text-center py-3 px-2">Basic</td>
+                  <td className="text-center py-3 px-2">Advanced</td>
+                  <td className="text-center py-3 px-2">ABORIPS AI</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-3 px-2 font-medium text-foreground">Marketplace Access</td>
+                  <td className="text-center py-3 px-2">-</td>
+                  <td className="text-center py-3 px-2"><Check className="h-4 w-4 text-primary mx-auto" /></td>
+                  <td className="text-center py-3 px-2">Standard</td>
+                  <td className="text-center py-3 px-2">Priority</td>
+                </tr>
+                <tr>
+                  <td className="py-3 px-2 font-medium text-foreground">RIPS Rate</td>
+                  <td className="text-center py-3 px-2">$2.77</td>
+                  <td className="text-center py-3 px-2">$2.77</td>
+                  <td className="text-center py-3 px-2">$2.15</td>
+                  <td className="text-center py-3 px-2 text-primary font-semibold">$1.65</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={() => setComparisonDialogOpen(false)}
+              data-testid="button-close-comparison"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

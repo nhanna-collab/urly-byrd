@@ -45,8 +45,8 @@ interface AnalyticsData {
   }>;
 }
 
-function formatCurrency(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
+function formatCurrency(dollars: number) {
+  return `$${dollars.toFixed(2)}`;
 }
 
 export default function Reports() {

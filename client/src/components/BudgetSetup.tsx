@@ -19,6 +19,9 @@ interface BudgetSetupProps {
   filteredCount: number;
   hasFilters: boolean;
   compact?: boolean;
+  availableTextBudget?: number;
+  availableRipsBudget?: number;
+  availableBank?: number;
 }
 
 export default function BudgetSetup({
@@ -28,6 +31,9 @@ export default function BudgetSetup({
   filteredCount,
   hasFilters,
   compact = false,
+  availableTextBudget = 0,
+  availableRipsBudget = 0,
+  availableBank = 0,
 }: BudgetSetupProps) {
   const [textBudget, setTextBudget] = useState<string>("");
   const [ripsBudget, setRipsBudget] = useState<string>("");
@@ -48,60 +54,51 @@ export default function BudgetSetup({
   const hasValues = textBudget !== "" || ripsBudget !== "" || maxClicks !== "";
   const targetCount = hasFilters ? filteredCount : totalCount;
 
+  // Calculate total budget needed per offer
+  const textBudgetValue = parseFloat(textBudget) || 0;
+  const ripsBudgetValue = parseFloat(ripsBudget) || 0;
+  
+  // Total budget needed = budget per offer * number of offers
+  const totalTextNeeded = textBudgetValue * targetCount;
+  const totalRipsNeeded = ripsBudgetValue * targetCount;
+  
+  // Check if exceeds available budgets
+  const exceedsTextBudget = totalTextNeeded > availableTextBudget;
+  const exceedsRipsBudget = totalRipsNeeded > availableRipsBudget;
+  const exceedsBudget = exceedsTextBudget || exceedsRipsBudget;
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <DollarSign className="h-4 w-4" />
-          Budget Setup
+          $ Setup
         </CardTitle>
         <CardDescription className="text-xs">
           {hasFilters 
-            ? `Set budgets for ${targetCount} filtered offer${targetCount !== 1 ? 's' : ''}`
-            : `Set budgets for all ${targetCount} offer${targetCount !== 1 ? 's' : ''}`
+            ? `Set $ for ${targetCount} filtered offer${targetCount !== 1 ? 's' : ''}`
+            : `Set $ for all ${targetCount} offer${targetCount !== 1 ? 's' : ''}`
           }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Available Budgets Display */}
+        <div className="grid grid-cols-3 gap-2 p-2 bg-muted/50 rounded">
+          <div className="text-center">
+            <div className="text-[8px] text-muted-foreground uppercase">Text Acct</div>
+            <div className="text-sm font-bold">{Math.round(availableTextBudget).toLocaleString()}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-[8px] text-muted-foreground uppercase">RIPS Acct</div>
+            <div className="text-sm font-bold">${availableRipsBudget.toFixed(2)}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-[8px] text-muted-foreground uppercase">Bank</div>
+            <div className="text-sm font-bold">${Math.round(availableBank).toLocaleString()}</div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
-          {/* Text Budget */}
-          <div className="space-y-1.5">
-            <Label htmlFor="text-budget" className="text-xs flex items-center gap-1.5">
-              <MessageSquare className="h-3.5 w-3.5" />
-              Text Budget ($)
-            </Label>
-            <Input
-              id="text-budget"
-              type="number"
-              min="0"
-              step="1"
-              placeholder="0"
-              value={textBudget}
-              onChange={(e) => setTextBudget(e.target.value)}
-              className="h-8 text-sm"
-              data-testid="input-text-budget"
-            />
-          </div>
-
-          {/* RIPS Budget */}
-          <div className="space-y-1.5">
-            <Label htmlFor="rips-budget" className="text-xs flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" />
-              RIPS Budget ($)
-            </Label>
-            <Input
-              id="rips-budget"
-              type="number"
-              min="0"
-              step="1"
-              placeholder="0"
-              value={ripsBudget}
-              onChange={(e) => setRipsBudget(e.target.value)}
-              className="h-8 text-sm"
-              data-testid="input-rips-budget"
-            />
-          </div>
-
           {/* Max Clicks */}
           <div className="space-y-1.5">
             <Label htmlFor="max-clicks" className="text-xs flex items-center gap-1.5">
@@ -115,8 +112,46 @@ export default function BudgetSetup({
               placeholder="1000"
               value={maxClicks}
               onChange={(e) => setMaxClicks(e.target.value)}
-              className="h-8 text-sm"
+              className="h-8 text-sm w-16"
               data-testid="input-max-clicks"
+            />
+          </div>
+
+          {/* RIPS */}
+          <div className="space-y-1.5">
+            <Label htmlFor="rips-budget" className="text-xs flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              RIPS ($)
+            </Label>
+            <Input
+              id="rips-budget"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="0"
+              value={ripsBudget}
+              onChange={(e) => setRipsBudget(e.target.value)}
+              className={`h-8 text-sm w-16 ${exceedsRipsBudget ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+              data-testid="input-rips-budget"
+            />
+          </div>
+
+          {/* Text */}
+          <div className="space-y-1.5">
+            <Label htmlFor="text-budget" className="text-xs flex items-center gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5" />
+              Text ($)
+            </Label>
+            <Input
+              id="text-budget"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="0"
+              value={textBudget}
+              onChange={(e) => setTextBudget(e.target.value)}
+              className={`h-8 text-sm w-16 ${exceedsTextBudget ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+              data-testid="input-text-budget"
             />
           </div>
 
@@ -149,14 +184,30 @@ export default function BudgetSetup({
           </div>
         </div>
 
+        {/* Budget Error Messages */}
+        {exceedsBudget && (
+          <div className="p-2 bg-destructive/10 border border-destructive/20 rounded text-xs space-y-1">
+            {exceedsTextBudget && (
+              <div className="text-destructive">
+                ⚠️ Text $ exceeds available: ${totalTextNeeded.toFixed(0)} needed, ${Math.round(availableTextBudget)} available
+              </div>
+            )}
+            {exceedsRipsBudget && (
+              <div className="text-destructive">
+                ⚠️ RIPS $ exceeds available: ${totalRipsNeeded.toFixed(0)} needed, ${Math.round(availableRipsBudget)} available
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Apply Button */}
         <Button
           onClick={handleApply}
-          disabled={!hasValues || isApplying || targetCount === 0}
+          disabled={!hasValues || isApplying || targetCount === 0 || exceedsBudget}
           className="w-full h-8 text-xs"
           data-testid="button-apply-budgets"
         >
-          {isApplying ? "Applying..." : `Apply to ${targetCount} Offer${targetCount !== 1 ? 's' : ''}`}
+          {isApplying ? "Adding..." : "Add to"}
         </Button>
       </CardContent>
     </Card>

@@ -95,7 +95,7 @@ export default function OffersToolbar({
             data-testid="button-sort-budget"
             className="gap-1"
           >
-            Budget
+            $
             {sortKey === "budget" && (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
           </Button>
           <Button

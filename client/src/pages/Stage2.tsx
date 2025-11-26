@@ -84,7 +84,7 @@ function calculateFolderMetrics(folder: CampaignFolder, folderOffers: Offer[]): 
   const totalClicks = folderOffers.reduce((sum, offer) => sum + (offer.unitsSold || 0), 0);
   const totalMaxClicks = folderOffers.reduce((sum, offer) => sum + (offer.maxClicksAllowed || 0), 0);
   const ctr = totalViews > 0 ? (totalClicks / totalViews) * 100 : 0;
-  const totalBudget = folderOffers.reduce((sum, offer) => sum + (offer.clickBudgetDollars || 0), 0);
+  const totalBudget = folderOffers.reduce((sum, offer) => sum + parseFloat(offer.clickBudgetDollars as any || "0"), 0);
   
   const now = Date.now();
   const durations = folderOffers
@@ -1194,9 +1194,12 @@ export default function Offers() {
   const handleDeleteDraft = async (offerId: string) => {
     try {
       // Permanently archive draft offers - throw them out completely
-      const response = await fetch(`/api/offers/${offerId}/permanent-delete`, {
+      const response = await fetch(`/api/offers/${offerId}/permanent`, {
         method: 'DELETE',
         credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
       });
 
       if (!response.ok) {
@@ -1208,7 +1211,12 @@ export default function Offers() {
         description: "The draft template has been permanently removed.",
       });
 
-      refetchOffers();
+      // Force complete cache invalidation and refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/my-offers"] });
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/my-offers"],
+        type: 'active',
+      });
     } catch (error) {
       console.error('Error archiving draft:', error);
       toast({
@@ -1224,13 +1232,22 @@ export default function Offers() {
       const response = await apiRequest("DELETE", `/api/offers/batch/delete-all/${stage}`);
       return await response.json();
     },
-    onSuccess: (data: { message: string; count: number }, stage) => {
+    onSuccess: async (data: { message: string; count: number }, stage) => {
       toast({
         title: "All Staged Offers Deleted",
         description: `Successfully deleted ${data.count} offer(s) from ${stage === "stage1" ? "Stage 1" : "Stage 2"}.`,
       });
-      refetchOffers();
-      refetchFolders();
+      // Force complete cache invalidation and refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/my-offers"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaign-folders"] });
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/my-offers"],
+        type: 'active',
+      });
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/campaign-folders"],
+        type: 'active',
+      });
       setShowDeleteAllDialog(false);
     },
     onError: (error: Error) => {
@@ -1646,20 +1663,20 @@ export default function Offers() {
                       <Button
                         variant={sortKey === "textBudget" ? "default" : "outline"}
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs w-20"
                         onClick={() => setSortKey("textBudget")}
                         data-testid="button-sort-text-budget"
                       >
-                        Text Budget
+                        $ Text
                       </Button>
                       <Button
                         variant={sortKey === "ripsBudget" ? "default" : "outline"}
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs w-20"
                         onClick={() => setSortKey("ripsBudget")}
                         data-testid="button-sort-rips-budget"
                       >
-                        RIPS Budget
+                        $ RIPS
                       </Button>
                     </div>
                   </div>

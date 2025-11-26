@@ -58,6 +58,11 @@ export interface OfferFormData {
   countdownHours?: number;
   countdownMinutes?: number;
   countdownSeconds?: number;
+  timeBombDays?: number;
+  timeBombHours?: number;
+  timeBombMinutes?: number;
+  timeBombSeconds?: number;
+  initialInventory?: number; // For quantity-based countdown ads
   maxClicksAllowed: number;
   shutDownAtMaximum?: boolean;
   notifyAtMaximum?: boolean;
@@ -78,6 +83,8 @@ export interface OfferFormData {
   imageUrl?: string;
   videoUrl?: string;
   status?: "draft" | "active" | "paused" | "expired"; // Offer status
+  scheduleType?: string; // Stage 2 field
+  campaignDuration?: number; // Stage 2 field
 }
 
 export default function OfferForm({ onSubmit, onCancel, initialData, userTier, user, menuItems = [], folders = [] }: OfferFormProps) {
@@ -90,53 +97,58 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
   
 
   const getInitialFormData = (): OfferFormData => {
-    if (initialData?.title) return {
-      title: initialData.title,
-      description: initialData.description || "",
-      campaignObjectives: initialData.campaignObjectives || [],
-      menuItem: initialData.menuItem || "",
-      offerType: initialData.offerType || "percentage",
-      percentageOff: initialData.percentageOff,
-      dollarOff: initialData.dollarOff,
-      buyQuantity: initialData.buyQuantity,
-      getQuantity: initialData.getQuantity,
-      bogoPercentageOff: initialData.bogoPercentageOff,
-      bogoItem: initialData.bogoItem,
-      spendThreshold: initialData.spendThreshold,
-      thresholdDiscount: initialData.thresholdDiscount,
-      xyfFreeItem: initialData.xyfFreeItem,
-      originalPrice: initialData.originalPrice || "",
-      redemptionType: initialData.redemptionType || "pay_at_redemption",
-      couponDeliveryMethod: initialData.couponDeliveryMethod,
-      deliveryConfig: initialData.deliveryConfig || {},
-      purchaseUrl: initialData.purchaseUrl || "",
-      couponCode: initialData.couponCode || "",
-      posWebhookUrl: initialData.posWebhookUrl || "",
-      addType: initialData.addType || "regular",
-      countdownDays: initialData.countdownDays,
-      countdownHours: initialData.countdownHours,
-      countdownMinutes: initialData.countdownMinutes,
-      countdownSeconds: initialData.countdownSeconds,
-      maxClicksAllowed: initialData.maxClicksAllowed || 1,
-      shutDownAtMaximum: initialData.shutDownAtMaximum || false,
-      notifyAtMaximum: initialData.notifyAtMaximum || false,
-      clickBudgetDollars: initialData.clickBudgetDollars || 0,
-      durationType: initialData.durationType || "endDate",
-      startDate: initialData.startDate || "",
-      endDate: initialData.endDate || "",
-      useByDate: initialData.useByDate || "",
-      zipCode: initialData.zipCode || "",
-      campaignFolder: initialData.campaignFolder,
-      targetUnits: initialData.targetUnits,
-      autoExtend: initialData.autoExtend || false,
-      extensionDays: initialData.extensionDays || 3,
-      notifyOnShortfall: initialData.notifyOnShortfall || false,
-      notifyOnTargetMet: initialData.notifyOnTargetMet || false,
-      notifyOnPoorPerformance: initialData.notifyOnPoorPerformance || false,
-      getNewCustomersEnabled: initialData.getNewCustomersEnabled || false,
-      imageUrl: initialData.imageUrl,
-      videoUrl: initialData.videoUrl || "",
-    };
+    if (initialData?.title) {
+      console.log("OfferForm: Loading from initialData (editing mode)");
+      return {
+        title: initialData.title,
+        description: initialData.description || "",
+        campaignObjectives: initialData.campaignObjectives || [],
+        menuItem: initialData.menuItem || "",
+        offerType: initialData.offerType || "percentage",
+        percentageOff: initialData.percentageOff,
+        dollarOff: initialData.dollarOff,
+        buyQuantity: initialData.buyQuantity,
+        getQuantity: initialData.getQuantity,
+        bogoPercentageOff: initialData.bogoPercentageOff,
+        bogoItem: initialData.bogoItem,
+        spendThreshold: initialData.spendThreshold,
+        thresholdDiscount: initialData.thresholdDiscount,
+        xyfFreeItem: initialData.xyfFreeItem,
+        originalPrice: initialData.originalPrice || "",
+        redemptionType: initialData.redemptionType || "pay_at_redemption",
+        couponDeliveryMethod: initialData.couponDeliveryMethod,
+        deliveryConfig: initialData.deliveryConfig || {},
+        purchaseUrl: initialData.purchaseUrl || "",
+        couponCode: initialData.couponCode || "",
+        posWebhookUrl: initialData.posWebhookUrl || "",
+        addType: initialData.addType || "regular",
+        countdownDays: initialData.countdownDays,
+        countdownHours: initialData.countdownHours,
+        countdownMinutes: initialData.countdownMinutes,
+        countdownSeconds: initialData.countdownSeconds,
+        maxClicksAllowed: initialData.maxClicksAllowed || 1,
+        shutDownAtMaximum: initialData.shutDownAtMaximum || false,
+        notifyAtMaximum: initialData.notifyAtMaximum || false,
+        clickBudgetDollars: initialData.clickBudgetDollars || 0,
+        durationType: initialData.durationType || "endDate",
+        startDate: initialData.startDate || "",
+        endDate: initialData.endDate || "",
+        useByDate: initialData.useByDate || "",
+        zipCode: initialData.zipCode || "",
+        campaignFolder: initialData.campaignFolder,
+        targetUnits: initialData.targetUnits,
+        autoExtend: initialData.autoExtend || false,
+        extensionDays: initialData.extensionDays || 3,
+        notifyOnShortfall: initialData.notifyOnShortfall || false,
+        notifyOnTargetMet: initialData.notifyOnTargetMet || false,
+        notifyOnPoorPerformance: initialData.notifyOnPoorPerformance || false,
+        getNewCustomersEnabled: initialData.getNewCustomersEnabled || false,
+        imageUrl: initialData.imageUrl,
+        videoUrl: initialData.videoUrl || "",
+        scheduleType: initialData.scheduleType || "no_countdowns",
+        campaignDuration: initialData.campaignDuration,
+      };
+    }
 
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
@@ -144,11 +156,16 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
         const parsed = JSON.parse(savedData);
         // Normalize startDate to string for backward compatibility and consistency
         parsed.startDate = String(parsed.startDate ?? "");
+        // Set default originalPrice if not present
+        parsed.originalPrice = parsed.originalPrice || "5";
+        console.log("OfferForm: Loading from localStorage", { title: parsed.title, description: parsed.description });
         return parsed;
       } catch (e) {
         console.error("Failed to parse saved form data", e);
       }
     }
+    
+    console.log("OfferForm: No saved data, using defaults");
 
     return {
       title: "",
@@ -163,7 +180,7 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
       bogoPercentageOff: undefined,
       spendThreshold: undefined,
       thresholdDiscount: undefined,
-      originalPrice: "",
+      originalPrice: "5",
       redemptionType: "pay_at_redemption",
       couponDeliveryMethod: undefined,
       deliveryConfig: {},
@@ -174,10 +191,10 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
       countdownHours: undefined,
       countdownMinutes: undefined,
       countdownSeconds: undefined,
-      maxClicksAllowed: 1,
+      maxClicksAllowed: 0,
       shutDownAtMaximum: false,
       notifyAtMaximum: false,
-      clickBudgetDollars: 5,
+      clickBudgetDollars: 0,
       durationType: "endDate",
       startDate: "",
       endDate: "",
@@ -192,6 +209,8 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
       getNewCustomersEnabled: false,
       imageUrl: undefined,
       videoUrl: "",
+      scheduleType: "no_countdowns",
+      campaignDuration: undefined,
     };
   };
 
@@ -331,11 +350,13 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
       }
     }
     
-    // Countdown validation (legacy support for old "countdown" ad type)
-    // New ad types (timer, both) use countdownTimerSeconds field instead
+    // Ad Type validation - require countdown fields when timer/both selected
     if (formData.addType === "timer" || formData.addType === "both") {
-      // Timer countdown validation handled by backend defaults
-      // Default is 30 seconds, can be changed in Stage 1
+      const hasCountdown = formData.countdownDays || formData.countdownHours || 
+                          formData.countdownMinutes || formData.countdownSeconds;
+      if (!hasCountdown) {
+        errors.push("Countdown Duration is required when Ad Type is Timer or Both (enter at least one time value)");
+      }
     }
     
     return errors;
@@ -387,7 +408,8 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
       return;
     }
     
-    localStorage.removeItem(STORAGE_KEY);
+    // KEEP localStorage for form persistence - don't clear it!
+    // localStorage.removeItem(STORAGE_KEY);
     
     // Pass along the copy info
     const draftData = {
@@ -425,7 +447,8 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
       return;
     }
     
-    localStorage.removeItem(STORAGE_KEY);
+    // KEEP localStorage for form persistence - don't clear it!
+    // localStorage.removeItem(STORAGE_KEY);
     onSubmit?.({ ...formData, imageUrl: previewImage, status: "active" });
     console.log("Offer launched:", { ...formData, imageUrl: previewImage, status: "active" });
   };
@@ -698,7 +721,7 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
           <CardTitle className="text-xs font-bold text-black dark:text-white uppercase tracking-wide">Offer/Campaign Admin</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 py-3 px-6" style={{ minHeight: '110%' }}>
-          {/* Row 1: Title, Product, Actual Price, ZIP, Image */}
+          {/* Row 1: Title, Product, Actual Price, ZIP Code, Image */}
           <div className="grid grid-cols-12 gap-4">
             <div className="col-span-3">
               <Label htmlFor="title" className="text-[11px] font-medium">Offer Title *</Label>
@@ -708,18 +731,27 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
               <Label htmlFor="menuItem" className="text-[11px] font-medium">Product / Service *</Label>
               <Autocomplete id="menuItem" value={formData.menuItem} onValueChange={(value) => setFormData({ ...formData, menuItem: value })} options={menuItems} required data-testid="input-menu-item" className="h-7" />
             </div>
-            <div className="col-span-1">
-              <Label htmlFor="originalPrice" className="text-[11px] font-medium">Orig. Price</Label>
+            <div className="col-span-2">
+              <Label htmlFor="originalPrice" className="text-[11px] font-medium">Orig. Price *</Label>
               <div className="relative">
                 <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">$</span>
-                <Input id="originalPrice" type="number" min="0" step="0.01" className="pl-3.5 h-7 text-xs" value={formData.originalPrice || ""} onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })} placeholder="0" data-testid="input-original-price" />
+                <Input id="originalPrice" type="number" min="0" step="0.01" className="pl-3.5 h-7 text-xs" value={formData.originalPrice || ""} onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })} placeholder="5.00" data-testid="input-original-price" />
               </div>
             </div>
             <div className="col-span-1">
               <Label htmlFor="zipCode" className="text-[11px] font-medium">ZIP *</Label>
-              <Input id="zipCode" value={formData.zipCode} onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })} maxLength={10} required data-testid="input-zip" className="h-7 text-xs" />
+              <Input 
+                id="zipCode" 
+                value={formData.zipCode} 
+                onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })} 
+                maxLength={10}
+                required 
+                data-testid="input-zip-code" 
+                className="h-7 text-xs" 
+                placeholder="12345"
+              />
             </div>
-            <div className="col-span-4 text-center">
+            <div className="col-span-3 text-center">
               <Label className="text-[11px] font-medium">Image</Label>
               {previewImage ? (
                 <div className="relative h-7 w-full bg-muted rounded overflow-hidden">
@@ -740,11 +772,11 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
 
           {/* Row 2: Description + Video Link */}
           <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-6">
+            <div className="col-span-9">
               <Label htmlFor="description" className="text-[11px] font-medium">Description *</Label>
               <Textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} required data-testid="input-description" className="resize-none text-xs min-h-0" />
             </div>
-            <div className="col-span-3 col-start-10 space-y-0.5">
+            <div className="col-span-3 space-y-0.5">
               <Label htmlFor="videoUrl" className="text-[11px] font-medium">Video Link</Label>
               <Input 
                 id="videoUrl" 
@@ -758,197 +790,181 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
             </div>
           </div>
 
-          {/* Row 3: Conditional Delivery Method for Pay At Redemption */}
-          {formData.redemptionType === "pay_at_redemption" && (
-            <div className="grid grid-cols-12 gap-4 items-end">
-              <div className="col-span-3 space-y-0.5">
-                <Label htmlFor="couponDeliveryMethod" className="text-[11px] font-medium">Card</Label>
-                <Select value={formData.couponDeliveryMethod || ""} onValueChange={(value) => setFormData({ ...formData, couponDeliveryMethod: value as CouponDeliveryMethod })}>
-                  <SelectTrigger id="couponDeliveryMethod" className="h-7 text-xs" data-testid="select-delivery-method">
-                    <SelectValue placeholder="Select delivery method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="coupon_codes">Coupon Codes</SelectItem>
-                    <SelectItem value="mobile_app_based_coupons">Icon Link (Mobile App)</SelectItem>
-                    <SelectItem value="mms_based_coupons">MMS (Image)</SelectItem>
-                    <SelectItem value="text_message_alerts">Text Message Alerts</SelectItem>
-                    <SelectItem value="mobile_wallet_passes">Mobile Wallet Passes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* Row 3: Card Type with sub-fields */}
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-3 space-y-0.5">
+              <Label htmlFor="cardType" className="text-[11px] font-medium">Card Type</Label>
+              <Select value={formData.couponDeliveryMethod || ""} onValueChange={(value) => setFormData({ ...formData, couponDeliveryMethod: value as CouponDeliveryMethod })}>
+                <SelectTrigger id="cardType" className="h-7 text-xs" data-testid="select-card-type">
+                  <SelectValue placeholder="Select delivery method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text_message_alerts">Text Message Alerts</SelectItem>
+                  <SelectItem value="coupon_codes">Coupon Codes</SelectItem>
+                  <SelectItem value="mobile_app_based_coupons">Icon Link (Mobile App)</SelectItem>
+                  <SelectItem value="mms_based_coupons">MMS (Image)</SelectItem>
+                  <SelectItem value="mobile_wallet_passes">Mobile Wallet Passes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Coupon Codes - Auto Generate Code + Manual Code + POS Webhook */}
-              {formData.couponDeliveryMethod === "coupon_codes" && (
-                <>
-                  <div className="col-span-3 flex items-center gap-2 h-7">
-                    <Label htmlFor="autoGenerateCode" className="text-[11px] font-medium cursor-pointer">Auto Generate Code</Label>
-                    <Switch 
-                      id="autoGenerateCode" 
-                      checked={(formData.deliveryConfig as any)?.autoGenerateCode || false} 
-                      onCheckedChange={(checked) => setFormData({ ...formData, deliveryConfig: { autoGenerateCode: checked }, couponCode: checked ? undefined : formData.couponCode })} 
-                      data-testid="switch-auto-generate-code" 
-                    />
-                  </div>
-                  {!(formData.deliveryConfig as any)?.autoGenerateCode ? (
-                    <div className="col-span-3 space-y-0.5">
-                      <Label htmlFor="couponCode" className="text-[11px] font-medium">Coupon Code</Label>
-                      <Input 
-                        id="couponCode" 
-                        value={formData.couponCode || ""} 
-                        onChange={(e) => setFormData({ ...formData, couponCode: e.target.value.toUpperCase() })} 
-                        placeholder="SAVE20" 
-                        data-testid="input-coupon-code" 
-                        className="h-7 text-xs" 
-                      />
-                    </div>
-                  ) : (
-                    <div className="col-span-6 space-y-0.5">
-                      <Label htmlFor="posWebhookUrl" className="text-[11px] font-medium">POS Webhook URL (Optional)</Label>
-                      <Input 
-                        id="posWebhookUrl" 
-                        type="url" 
-                        value={formData.posWebhookUrl || ""} 
-                        onChange={(e) => setFormData({ ...formData, posWebhookUrl: e.target.value })} 
-                        placeholder="https://your-pos-system.com/webhooks/coupons" 
-                        data-testid="input-pos-webhook-url" 
-                        className="h-7 text-xs" 
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Mobile App - Deep Link */}
-              {formData.couponDeliveryMethod === "mobile_app_based_coupons" && (
-                <div className="col-span-6 space-y-0.5">
-                  <Label htmlFor="appDeepLink" className="text-[11px] font-medium">App Deep Link</Label>
-                  <Input 
-                    id="appDeepLink" 
-                    type="url" 
-                    value={(formData.deliveryConfig as any)?.appDeepLink || ""} 
-                    onChange={(e) => setFormData({ ...formData, deliveryConfig: { appDeepLink: e.target.value } })} 
-                    placeholder="myapp://..." 
-                    data-testid="input-app-deep-link" 
-                    className="h-7 text-xs" 
+            {/* Text Message Alerts: Coupon Code + Message Template */}
+            {formData.couponDeliveryMethod === "text_message_alerts" && (
+              <>
+                <div className="col-span-3 space-y-0.5">
+                  <Label htmlFor="couponCode" className="text-[11px] font-medium">Coupon Code *</Label>
+                  <Input
+                    id="couponCode"
+                    value={formData.couponCode || ""}
+                    onChange={(e) => setFormData({ ...formData, couponCode: e.target.value })}
+                    placeholder="e.g., SAVE20"
+                    className="h-7 text-xs"
+                    data-testid="input-coupon-code"
                   />
                 </div>
-              )}
-
-              {/* MMS - Coupon Image URL */}
-              {formData.couponDeliveryMethod === "mms_based_coupons" && (
-                <div className="col-span-6 space-y-0.5">
-                  <Label htmlFor="couponImageUrl" className="text-[11px] font-medium">Coupon Image URL</Label>
-                  <Input 
-                    id="couponImageUrl" 
-                    type="url" 
-                    value={(formData.deliveryConfig as any)?.couponImageUrl || ""} 
-                    onChange={(e) => setFormData({ ...formData, deliveryConfig: { couponImageUrl: e.target.value } })} 
-                    placeholder="https://..." 
-                    data-testid="input-coupon-image-url" 
-                    className="h-7 text-xs" 
-                  />
-                </div>
-              )}
-
-              {/* Text Alerts - Message Template */}
-              {formData.couponDeliveryMethod === "text_message_alerts" && (
                 <div className="col-span-6 space-y-0.5">
                   <Label htmlFor="messageTemplate" className="text-[11px] font-medium">Message Template</Label>
-                  <Input 
-                    id="messageTemplate" 
-                    value={(formData.deliveryConfig as any)?.messageTemplate || ""} 
-                    onChange={(e) => setFormData({ ...formData, deliveryConfig: { messageTemplate: e.target.value } })} 
-                    placeholder="Your coupon: {code}" 
-                    data-testid="input-message-template" 
-                    className="h-7 text-xs" 
+                  <Input
+                    id="messageTemplate"
+                    value={(formData.deliveryConfig as any)?.messageTemplate || ""}
+                    onChange={(e) => setFormData({ ...formData, deliveryConfig: { messageTemplate: e.target.value } })}
+                    placeholder="e.g., Your code: {CODE}"
+                    className="h-7 text-xs"
+                    data-testid="input-message-template"
                   />
                 </div>
-              )}
+              </>
+            )}
 
-              {/* Mobile Wallet - Barcode Type */}
-              {formData.couponDeliveryMethod === "mobile_wallet_passes" && (
+            {/* Icon Link: App Deep Link */}
+            {formData.couponDeliveryMethod === "mobile_app_based_coupons" && (
+              <div className="col-span-6 space-y-0.5">
+                <Label htmlFor="appDeepLink" className="text-[11px] font-medium">App Deep Link</Label>
+                <Input
+                  id="appDeepLink"
+                  type="url"
+                  value={(formData.deliveryConfig as any)?.appDeepLink || ""}
+                  onChange={(e) => setFormData({ ...formData, deliveryConfig: { appDeepLink: e.target.value } })}
+                  placeholder="e.g., myapp://coupon/123"
+                  className="h-7 text-xs"
+                  data-testid="input-app-deep-link"
+                />
+              </div>
+            )}
+
+            {/* MMS: Coupon Code + Image URL */}
+            {formData.couponDeliveryMethod === "mms_based_coupons" && (
+              <>
                 <div className="col-span-3 space-y-0.5">
-                  <Label htmlFor="barcodeType" className="text-[11px] font-medium">Barcode Type</Label>
+                  <Label htmlFor="couponCode" className="text-[11px] font-medium">Coupon Code *</Label>
+                  <Input
+                    id="couponCode"
+                    value={formData.couponCode || ""}
+                    onChange={(e) => setFormData({ ...formData, couponCode: e.target.value })}
+                    placeholder="e.g., SAVE20"
+                    className="h-7 text-xs"
+                    data-testid="input-coupon-code"
+                  />
+                </div>
+                <div className="col-span-6 space-y-0.5">
+                  <Label htmlFor="couponImageUrl" className="text-[11px] font-medium">Coupon Image URL</Label>
+                  <Input
+                    id="couponImageUrl"
+                    type="url"
+                    value={(formData.deliveryConfig as any)?.couponImageUrl || ""}
+                    onChange={(e) => setFormData({ ...formData, deliveryConfig: { couponImageUrl: e.target.value } })}
+                    placeholder="https://..."
+                    className="h-7 text-xs"
+                    data-testid="input-coupon-image-url"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Coupon Codes: Coupon Code + Auto-Generate Toggle */}
+            {formData.couponDeliveryMethod === "coupon_codes" && (
+              <>
+                <div className="col-span-3 space-y-0.5">
+                  <Label htmlFor="couponCode" className="text-[11px] font-medium">Coupon Code *</Label>
+                  <Input
+                    id="couponCode"
+                    value={formData.couponCode || ""}
+                    onChange={(e) => setFormData({ ...formData, couponCode: e.target.value })}
+                    placeholder="e.g., SAVE20"
+                    className="h-7 text-xs"
+                    data-testid="input-coupon-code"
+                  />
+                </div>
+                <div className="col-span-3 space-y-0.5">
+                  <Label htmlFor="autoGenerateCode" className="text-[11px] font-medium">Auto-Generate Code</Label>
                   <Select 
-                    value={(formData.deliveryConfig as any)?.barcodeType || "qr_code"} 
-                    onValueChange={(value) => setFormData({ ...formData, deliveryConfig: { barcodeType: value as 'qr_code' | 'code128' | 'code39' | 'ean13' } })}
+                    value={(formData.deliveryConfig as any)?.autoGenerateCode ? "yes" : "no"}
+                    onValueChange={(value) => setFormData({ ...formData, deliveryConfig: { autoGenerateCode: value === "yes" } })}
                   >
-                    <SelectTrigger id="barcodeType" className="h-7 text-xs" data-testid="select-barcode-type">
+                    <SelectTrigger id="autoGenerateCode" className="h-7 text-xs" data-testid="select-auto-generate-code">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="qr_code">QR Code</SelectItem>
-                      <SelectItem value="code128">Code 128</SelectItem>
-                      <SelectItem value="code39">Code 39</SelectItem>
-                      <SelectItem value="ean13">EAN-13</SelectItem>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-            </div>
-          )}
+              </>
+            )}
 
-          {formData.redemptionType === "prepayment_offer" && (
-            <div className="flex items-start gap-4">
-              <div className="space-y-0.5 flex-1">
-                <Label htmlFor="purchaseUrl" className="text-[11px] font-medium">Purchase URL *</Label>
-                <Input 
-                  id="purchaseUrl" 
-                  type="url" 
-                  value={formData.purchaseUrl || ""} 
-                  onChange={(e) => setFormData({ ...formData, purchaseUrl: e.target.value })} 
-                  placeholder="https://..." 
-                  data-testid="input-purchase-url" 
-                  className="h-7 text-xs" 
-                />
+            {/* Mobile Wallet: Barcode Type */}
+            {formData.couponDeliveryMethod === "mobile_wallet_passes" && (
+              <div className="col-span-3 space-y-0.5">
+                <Label htmlFor="barcodeType" className="text-[11px] font-medium">Barcode Type</Label>
+                <Select 
+                  value={(formData.deliveryConfig as any)?.barcodeType || "qr_code"}
+                  onValueChange={(value) => setFormData({ ...formData, deliveryConfig: { barcodeType: value as 'qr_code' | 'code128' | 'code39' | 'ean13' } })}
+                >
+                  <SelectTrigger id="barcodeType" className="h-7 text-xs" data-testid="select-barcode-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="qr_code">QR Code</SelectItem>
+                    <SelectItem value="code128">Code 128</SelectItem>
+                    <SelectItem value="code39">Code 39</SelectItem>
+                    <SelectItem value="ean13">EAN-13</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+
         </CardContent>
       </Card>
 
-      {/* Section 2: Offer Terms */}
+      {/* Section 2: Offer Terms - Single Row Layout with More Height */}
       <Card id="terms" className="bg-orange-200 dark:bg-orange-950/40 mt-6" style={{ scrollMarginTop: 'calc(var(--app-header-height, 80px) + 52px)' }}>
         <CardHeader className="py-2 px-6">
           <CardTitle className="text-xs font-bold text-black dark:text-white uppercase tracking-wide">Offer Terms</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 py-3 px-6">
+        <CardContent className="py-4 px-6 min-h-[100px]">
 
-          {/* Row 1: Payment Type + Purchase URL */}
-          <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-3">
+          {/* Single Row: Payment Type | Offer Type | Dynamic Card Type Fields */}
+          <div className="grid grid-cols-12 gap-4 items-end">
+            {/* Payment Type */}
+            <div className="col-span-2 space-y-0.5">
               <Label htmlFor="couponType" className="text-[11px] font-medium">Payment Type *</Label>
               <Select value={formData.redemptionType} onValueChange={(value) => setFormData({ ...formData, redemptionType: value as RedemptionType })}>
                 <SelectTrigger id="couponType" data-testid="select-coupon-type" className="h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pay_at_redemption">Pay At Redemption (PAR)</SelectItem>
-                  <SelectItem value="prepayment_offer">Pre-Payment Offer (PPO)</SelectItem>
+                  <SelectItem value="pay_at_redemption">PAR</SelectItem>
+                  <SelectItem value="prepayment_offer">PPO</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {formData.redemptionType === "prepayment_offer" && (
-              <div className="col-span-9">
-                <Label htmlFor="purchaseUrl" className="text-[11px] font-medium">Purchase URL *</Label>
-                <Input 
-                  id="purchaseUrl" 
-                  type="url" 
-                  value={formData.purchaseUrl || ""} 
-                  onChange={(e) => setFormData({ ...formData, purchaseUrl: e.target.value })} 
-                  placeholder="https://your-store.com/checkout" 
-                  data-testid="input-purchase-url-section2" 
-                  className="h-7 text-xs" 
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Row 2: Offer Type */}
-          <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-3">
-              <Label htmlFor="offerType" className="text-[11px] font-medium">Offer Type (Single) *</Label>
+            {/* Offer Type */}
+            <div className="col-span-2 space-y-0.5">
+              <Label htmlFor="offerType" className="text-[11px] font-medium">Offer Type *</Label>
               <Select
                 value={formData.offerType}
                 onValueChange={(value) =>
@@ -959,21 +975,19 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="percentage">Percentage Off (PCT)</SelectItem>
-                  <SelectItem value="dollar_amount">Dollar Amount Off (DOL)</SelectItem>
-                  <SelectItem value="bogo">Buy One Get One (BOGO)</SelectItem>
-                  <SelectItem value="spend_threshold">Spend X Get Y Off (XY)</SelectItem>
-                  <SelectItem value="buy_x_get_y">Buy X Get Y for Free (XYF)</SelectItem>
+                  <SelectItem value="percentage">PCT</SelectItem>
+                  <SelectItem value="dollar_amount">DOL</SelectItem>
+                  <SelectItem value="bogo">BOGO</SelectItem>
+                  <SelectItem value="spend_threshold">XY</SelectItem>
+                  <SelectItem value="buy_x_get_y">XYF</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {/* Percentage Off */}
-          {formData.offerType === "percentage" && (
-            <div className="grid grid-cols-12 gap-4">
+            {/* Percentage Off Fields */}
+            {formData.offerType === "percentage" && (
               <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="percentageOff" className="text-[11px] font-medium">Percentage Off *</Label>
+                <Label htmlFor="percentageOff" className="text-[11px] font-medium">% Off *</Label>
                 <div className="relative">
                   <Input
                     id="percentageOff"
@@ -991,14 +1005,12 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Dollar Amount */}
-          {formData.offerType === "dollar_amount" && (
-            <div className="grid grid-cols-12 gap-4">
+            {/* Dollar Amount Fields */}
+            {formData.offerType === "dollar_amount" && (
               <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="dollarOff" className="text-[11px] font-medium">Dollar Amount *</Label>
+                <Label htmlFor="dollarOff" className="text-[11px] font-medium">$ Off *</Label>
                 <div className="relative">
                   <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">$</span>
                   <Input
@@ -1014,180 +1026,534 @@ export default function OfferForm({ onSubmit, onCancel, initialData, userTier, u
                   />
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* BOGO */}
-          {formData.offerType === "bogo" && (
-            <div className="grid grid-cols-12 gap-4">
-              <div className="col-span-3 space-y-0.5">
-                <Label htmlFor="bogoItem" className="text-[11px] font-medium">BOGO Item *</Label>
+            {/* BOGO Fields */}
+            {formData.offerType === "bogo" && (
+              <>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="bogoItem" className="text-[11px] font-medium">Item *</Label>
+                  <Input 
+                    id="bogoItem" 
+                    value={formData.bogoItem || ""} 
+                    onChange={(e) => setFormData({ ...formData, bogoItem: e.target.value })} 
+                    placeholder="Item" 
+                    data-testid="input-bogo-item" 
+                    className="h-7 text-xs" 
+                  />
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="buyQuantity" className="text-[11px] font-medium">Buy *</Label>
+                  <Input
+                    id="buyQuantity"
+                    type="number"
+                    min="1"
+                    value={formData.buyQuantity || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, buyQuantity: parseInt(e.target.value) || undefined })
+                    }
+                    data-testid="input-buy-quantity"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="getQuantity" className="text-[11px] font-medium">Get *</Label>
+                  <Input
+                    id="getQuantity"
+                    type="number"
+                    min="1"
+                    value={formData.getQuantity || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, getQuantity: parseInt(e.target.value) || undefined })
+                    }
+                    data-testid="input-get-quantity"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="bogoPercentageOff" className="text-[11px] font-medium">@ % *</Label>
+                  <div className="relative">
+                    <Input
+                      id="bogoPercentageOff"
+                      type="number"
+                      min="5"
+                      max="100"
+                      step="5"
+                      value={formData.bogoPercentageOff || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bogoPercentageOff: parseInt(e.target.value) || undefined })
+                      }
+                      data-testid="input-bogo-percentage"
+                      className="h-7 text-xs pr-6"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Spend Threshold Fields */}
+            {formData.offerType === "spend_threshold" && (
+              <>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="spendThreshold" className="text-[11px] font-medium">Spend *</Label>
+                  <div className="relative">
+                    <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">$</span>
+                    <Input
+                      id="spendThreshold"
+                      type="number"
+                      min="1"
+                      value={formData.spendThreshold || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, spendThreshold: parseInt(e.target.value) || undefined })
+                      }
+                      className="pl-3.5 h-7 text-xs"
+                      data-testid="input-spend-threshold"
+                    />
+                  </div>
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="thresholdDiscount" className="text-[11px] font-medium">Get $ Off *</Label>
+                  <div className="relative">
+                    <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">$</span>
+                    <Input
+                      id="thresholdDiscount"
+                      type="number"
+                      min="1"
+                      value={formData.thresholdDiscount || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, thresholdDiscount: parseInt(e.target.value) || undefined })
+                      }
+                      className="pl-3.5 h-7 text-xs"
+                      data-testid="input-threshold-discount"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Buy X Get Y Free Fields */}
+            {formData.offerType === "buy_x_get_y" && (
+              <>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="xyfFreeItem" className="text-[11px] font-medium">Free Item *</Label>
+                  <Input 
+                    id="xyfFreeItem" 
+                    value={formData.xyfFreeItem || ""} 
+                    onChange={(e) => setFormData({ ...formData, xyfFreeItem: e.target.value })} 
+                    placeholder="Item" 
+                    data-testid="input-xyf-free-item"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="buyQuantityXYF" className="text-[11px] font-medium">Buy *</Label>
+                  <Input
+                    id="buyQuantityXYF"
+                    type="number"
+                    min="1"
+                    value={formData.buyQuantity || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, buyQuantity: parseInt(e.target.value) || undefined })
+                    }
+                    data-testid="input-buy-quantity-xyf"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <Label htmlFor="getQuantityXYF" className="text-[11px] font-medium">Get *</Label>
+                  <Input
+                    id="getQuantityXYF"
+                    type="number"
+                    min="1"
+                    value={formData.getQuantity || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, getQuantity: parseInt(e.target.value) || undefined })
+                    }
+                    data-testid="input-get-quantity-xyf"
+                    className="h-7 text-xs"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Purchase URL for PPO - appears on the right */}
+            {formData.redemptionType === "prepayment_offer" && (
+              <div className="col-span-4 space-y-0.5">
+                <Label htmlFor="purchaseUrl" className="text-[11px] font-medium">Purchase URL *</Label>
                 <Input 
-                  id="bogoItem" 
-                  value={formData.bogoItem || ""} 
-                  onChange={(e) => setFormData({ ...formData, bogoItem: e.target.value })} 
-                  placeholder="Item name" 
-                  data-testid="input-bogo-item" 
+                  id="purchaseUrl" 
+                  type="url" 
+                  value={formData.purchaseUrl || ""} 
+                  onChange={(e) => setFormData({ ...formData, purchaseUrl: e.target.value })} 
+                  placeholder="https://your-store.com/checkout" 
+                  data-testid="input-purchase-url-terms" 
                   className="h-7 text-xs" 
                 />
               </div>
-              <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="buyQuantity" className="text-[11px] font-medium">Buy Quantity *</Label>
-                <Input
-                  id="buyQuantity"
-                  type="number"
-                  min="1"
-                  value={formData.buyQuantity || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, buyQuantity: parseInt(e.target.value) || undefined })
-                  }
-                  data-testid="input-buy-quantity"
-                  className="h-7 text-xs"
-                />
-              </div>
-              <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="getQuantity" className="text-[11px] font-medium">Get Quantity *</Label>
-                <Input
-                  id="getQuantity"
-                  type="number"
-                  min="1"
-                  value={formData.getQuantity || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, getQuantity: parseInt(e.target.value) || undefined })
-                  }
-                  data-testid="input-get-quantity"
-                  className="h-7 text-xs"
-                />
-              </div>
-              <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="bogoPercentageOff" className="text-[11px] font-medium">At % Off *</Label>
-                <div className="relative">
-                  <Input
-                    id="bogoPercentageOff"
-                    type="number"
-                    min="5"
-                    max="100"
-                    step="5"
-                    value={formData.bogoPercentageOff || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bogoPercentageOff: parseInt(e.target.value) || undefined })
-                    }
-                    data-testid="input-bogo-percentage"
-                    className="h-7 text-xs pr-6"
-                  />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Spend Threshold */}
-          {formData.offerType === "spend_threshold" && (
-            <div className="grid grid-cols-12 gap-4">
-              <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="spendThreshold" className="text-[11px] font-medium">Spend Threshold *</Label>
-                <div className="relative">
-                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">$</span>
-                  <Input
-                    id="spendThreshold"
-                    type="number"
-                    min="1"
-                    value={formData.spendThreshold || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, spendThreshold: parseInt(e.target.value) || undefined })
-                    }
-                    className="pl-3.5 h-7 text-xs"
-                    data-testid="input-spend-threshold"
-                  />
-                </div>
-              </div>
-              <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="thresholdDiscount" className="text-[11px] font-medium">Discount Amount *</Label>
-                <div className="relative">
-                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">$</span>
-                  <Input
-                    id="thresholdDiscount"
-                    type="number"
-                    min="1"
-                    value={formData.thresholdDiscount || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, thresholdDiscount: parseInt(e.target.value) || undefined })
-                    }
-                    className="pl-3.5 h-7 text-xs"
-                    data-testid="input-threshold-discount"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Buy X Get Y Free */}
-          {formData.offerType === "buy_x_get_y" && (
-            <div className="grid grid-cols-12 gap-4">
-              <div className="col-span-3 space-y-0.5">
-                <Label htmlFor="xyfFreeItem" className="text-[11px] font-medium">Free Item *</Label>
-                <Input 
-                  id="xyfFreeItem" 
-                  value={formData.xyfFreeItem || ""} 
-                  onChange={(e) => setFormData({ ...formData, xyfFreeItem: e.target.value })} 
-                  placeholder="Free item name" 
-                  data-testid="input-xyf-free-item"
-                  className="h-7 text-xs"
-                />
-              </div>
-              <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="buyQuantityXYF" className="text-[11px] font-medium">Buy Quantity *</Label>
-                <Input
-                  id="buyQuantityXYF"
-                  type="number"
-                  min="1"
-                  value={formData.buyQuantity || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, buyQuantity: parseInt(e.target.value) || undefined })
-                  }
-                  data-testid="input-buy-quantity-xyf"
-                  className="h-7 text-xs"
-                />
-              </div>
-              <div className="col-span-2 space-y-0.5">
-                <Label htmlFor="getQuantityXYF" className="text-[11px] font-medium">Get Quantity *</Label>
-                <Input
-                  id="getQuantityXYF"
-                  type="number"
-                  min="1"
-                  value={formData.getQuantity || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, getQuantity: parseInt(e.target.value) || undefined })
-                  }
-                  data-testid="input-get-quantity-xyf"
-                  className="h-7 text-xs"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Max Clicks (Before ending offer) */}
-          <div className="grid grid-cols-12 gap-4 border-t pt-3 mt-3">
-            <div className="col-span-3 space-y-0.5">
-              <Label htmlFor="maxClicksAllowed" className="text-[11px] font-medium">Max Clicks (Before Ending) *</Label>
-              <Input
-                id="maxClicksAllowed"
-                type="number"
-                min="1"
-                value={formData.maxClicksAllowed || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, maxClicksAllowed: parseInt(e.target.value) || 1 })
-                }
-                data-testid="input-max-clicks-allowed"
-                className="h-7 text-xs"
-                placeholder="1000"
-                required
-              />
-            </div>
+            )}
           </div>
 
         </CardContent>
       </Card>
+
+      {/* Section 3: Choose One Header */}
+      <div className="mt-6 text-center">
+        <h3 className="text-sm font-bold text-black dark:text-white uppercase tracking-wide mb-2">
+          ↓ Choose One ↓
+        </h3>
+      </div>
+
+      {/* Two Separate Advanced Options Cards */}
+      {(() => {
+        // Check if any countdown duration field has a value (Stage 1 is active)
+        const hasCountdownDuration = !!(
+          formData.countdownDays || 
+          formData.countdownHours || 
+          formData.countdownMinutes || 
+          formData.countdownSeconds
+        );
+        
+        // Check if any Stage 2 field has a value (Stage 2 is active)
+        const hasStage2Data = !!(
+          (formData.scheduleType && formData.scheduleType !== "no_countdowns") ||
+          formData.autoExtend ||
+          formData.campaignDuration
+        );
+        
+        return (
+          <div className="grid grid-cols-2 gap-6 mt-4">
+            
+            {/* STAGE 1 CARD */}
+            <Card 
+              id="advanced-stage1" 
+              className={`bg-purple-200 dark:bg-purple-950/40 transition-opacity ${
+                hasStage2Data ? 'opacity-50 pointer-events-none' : ''
+              }`}
+              style={{ scrollMarginTop: 'calc(var(--app-header-height, 80px) + 52px)' }}
+            >
+          <CardHeader className="py-2 px-6">
+            <CardTitle className="text-xs font-bold text-black dark:text-white uppercase tracking-wide">
+              Advanced Options Stage 1
+              {hasStage2Data && <span className="ml-2 text-[10px] font-normal">(Stage 2 Active)</span>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-3 px-6 space-y-3">
+              
+              {/* Ad Type */}
+              <div className="space-y-0.5">
+                <Label htmlFor="addType" className="text-[11px] font-medium">Ad Type *</Label>
+                <Select
+                  value={formData.addType}
+                  onValueChange={(value) => setFormData({ ...formData, addType: value as AddType })}
+                >
+                  <SelectTrigger id="addType" data-testid="select-ad-type" className="h-7 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="regular">Regular Card</SelectItem>
+                    <SelectItem value="timer">Countdown Timer</SelectItem>
+                    <SelectItem value="quantity">Countdown QTY (Dynamic)</SelectItem>
+                    <SelectItem value="both">Both (Timer + QTY)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Countdown Timer Duration - Only for timer or both */}
+              {(formData.addType === "timer" || formData.addType === "both") && (
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-medium">Countdown Timer (Decision Time)</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="countdownDays" className="text-[10px] font-medium">Days</Label>
+                      <Input
+                        id="countdownDays"
+                        type="number"
+                        min="0"
+                        max="365"
+                        value={formData.countdownDays || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, countdownDays: parseInt(e.target.value) || undefined })
+                        }
+                        data-testid="input-countdown-days"
+                        className="h-8 text-sm w-16"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label htmlFor="countdownHours" className="text-[10px] font-medium">Hours</Label>
+                      <Input
+                        id="countdownHours"
+                        type="number"
+                        min="0"
+                        max="23"
+                        value={formData.countdownHours || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, countdownHours: parseInt(e.target.value) || undefined })
+                        }
+                        data-testid="input-countdown-hours"
+                        className="h-8 text-sm w-16"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label htmlFor="countdownMinutes" className="text-[10px] font-medium">Mins</Label>
+                      <Input
+                        id="countdownMinutes"
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={formData.countdownMinutes || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, countdownMinutes: parseInt(e.target.value) || undefined })
+                        }
+                        data-testid="input-countdown-minutes"
+                        className="h-8 text-sm w-16"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label htmlFor="countdownSeconds" className="text-[10px] font-medium">Secs</Label>
+                      <Input
+                        id="countdownSeconds"
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={formData.countdownSeconds || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, countdownSeconds: parseInt(e.target.value) || undefined })
+                        }
+                        data-testid="input-countdown-seconds"
+                        className="h-8 text-sm w-16"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Time Bomb Duration - Always show */}
+              <div className="space-y-2">
+                <Label className="text-[11px] font-medium">Time Bomb (Redemption Deadline)</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="timeBombDays" className="text-[10px] font-medium">Days</Label>
+                    <Input
+                      id="timeBombDays"
+                      type="number"
+                      min="0"
+                      max="365"
+                      value={formData.timeBombDays || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, timeBombDays: parseInt(e.target.value) || undefined })
+                      }
+                      data-testid="input-timebomb-days"
+                      className="h-8 text-sm w-16"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="timeBombHours" className="text-[10px] font-medium">Hours</Label>
+                    <Input
+                      id="timeBombHours"
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={formData.timeBombHours || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, timeBombHours: parseInt(e.target.value) || undefined })
+                      }
+                      data-testid="input-timebomb-hours"
+                      className="h-8 text-sm w-16"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="timeBombMinutes" className="text-[10px] font-medium">Mins</Label>
+                    <Input
+                      id="timeBombMinutes"
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={formData.timeBombMinutes || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, timeBombMinutes: parseInt(e.target.value) || undefined })
+                      }
+                      data-testid="input-timebomb-minutes"
+                      className="h-8 text-sm w-16"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="timeBombSeconds" className="text-[10px] font-medium">Secs</Label>
+                    <Input
+                      id="timeBombSeconds"
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={formData.timeBombSeconds || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, timeBombSeconds: parseInt(e.target.value) || undefined })
+                      }
+                      data-testid="input-timebomb-seconds"
+                      className="h-8 text-sm w-16"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+          </CardContent>
+        </Card>
+
+        {/* STAGE 2 CARD */}
+        <Card 
+          id="advanced-stage2" 
+          className={`bg-purple-200 dark:bg-purple-950/40 transition-opacity ${
+            hasCountdownDuration ? 'opacity-50 pointer-events-none' : ''
+          }`}
+          style={{ scrollMarginTop: 'calc(var(--app-header-height, 80px) + 52px)' }}
+        >
+          <CardHeader className="py-2 px-6">
+            <CardTitle className="text-xs font-bold text-black dark:text-white uppercase tracking-wide">
+              Permutation/Advanced Options Stage 2
+              {hasCountdownDuration && <span className="ml-2 text-[10px] font-normal">(Stage 1 Active)</span>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-3 px-6 space-y-3">
+            
+            {/* Permutation Set */}
+            <div className="space-y-0.5">
+              <Label htmlFor="permutationSet" className="text-[11px] font-medium">Permutation Set</Label>
+              <Select 
+                value={formData.scheduleType || "no_countdowns"}
+                onValueChange={(value) => setFormData({ ...formData, scheduleType: value })}
+              >
+                <SelectTrigger id="permutationSet" className="h-7 text-xs" data-testid="select-permutation-set">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_countdowns">No Countdowns</SelectItem>
+                  <SelectItem value="countdown_timer">Countdown Timer (CT)</SelectItem>
+                  <SelectItem value="countdown_qty">Countdown Qty (CQ)</SelectItem>
+                  <SelectItem value="both">Both</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Conditional Completion Fields based on Permutation Set */}
+            {formData.scheduleType === "countdown_timer" && (
+              <div className="space-y-2 border-l-2 border-purple-400 pl-3">
+                <p className="text-[10px] font-semibold text-purple-900 dark:text-purple-100">Countdown Timer Settings</p>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="ct-days" className="text-[10px]">Days</Label>
+                    <Input id="ct-days" type="number" min="0" placeholder="0" className="h-6 text-xs" data-testid="input-ct-days" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="ct-hours" className="text-[10px]">Hours</Label>
+                    <Input id="ct-hours" type="number" min="0" max="23" placeholder="0" className="h-6 text-xs" data-testid="input-ct-hours" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="ct-minutes" className="text-[10px]">Min</Label>
+                    <Input id="ct-minutes" type="number" min="0" max="59" placeholder="0" className="h-6 text-xs" data-testid="input-ct-minutes" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="ct-seconds" className="text-[10px]">Sec</Label>
+                    <Input id="ct-seconds" type="number" min="0" max="59" placeholder="0" className="h-6 text-xs" data-testid="input-ct-seconds" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formData.scheduleType === "countdown_qty" && (
+              <div className="space-y-2 border-l-2 border-purple-400 pl-3">
+                <p className="text-[10px] font-semibold text-purple-900 dark:text-purple-100">Countdown Qty Settings</p>
+                <div className="space-y-0.5">
+                  <Label htmlFor="cq-inventory" className="text-[10px]">Initial Inventory</Label>
+                  <Input 
+                    id="cq-inventory" 
+                    type="number" 
+                    min="1" 
+                    placeholder="e.g., 50" 
+                    className="h-6 text-xs" 
+                    data-testid="input-cq-inventory" 
+                  />
+                </div>
+              </div>
+            )}
+
+            {formData.scheduleType === "both" && (
+              <div className="space-y-2 border-l-2 border-purple-400 pl-3">
+                <p className="text-[10px] font-semibold text-purple-900 dark:text-purple-100">Both Countdown Settings</p>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="both-days" className="text-[10px]">Days</Label>
+                    <Input id="both-days" type="number" min="0" placeholder="0" className="h-6 text-xs" data-testid="input-both-days" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="both-hours" className="text-[10px]">Hours</Label>
+                    <Input id="both-hours" type="number" min="0" max="23" placeholder="0" className="h-6 text-xs" data-testid="input-both-hours" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="both-minutes" className="text-[10px]">Min</Label>
+                    <Input id="both-minutes" type="number" min="0" max="59" placeholder="0" className="h-6 text-xs" data-testid="input-both-minutes" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label htmlFor="both-seconds" className="text-[10px]">Sec</Label>
+                    <Input id="both-seconds" type="number" min="0" max="59" placeholder="0" className="h-6 text-xs" data-testid="input-both-seconds" />
+                  </div>
+                </div>
+                <div className="space-y-0.5 mt-2">
+                  <Label htmlFor="both-inventory" className="text-[10px]">Initial Inventory</Label>
+                  <Input 
+                    id="both-inventory" 
+                    type="number" 
+                    min="1" 
+                    placeholder="e.g., 50" 
+                    className="h-6 text-xs" 
+                    data-testid="input-both-inventory" 
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Auto-Extend */}
+            <div className="space-y-0.5">
+              <Label htmlFor="autoExtend" className="text-[11px] font-medium">Auto-Extend</Label>
+              <Select 
+                value={formData.autoExtend ? "enabled" : "disabled"}
+                onValueChange={(value) => setFormData({ ...formData, autoExtend: value === "enabled" })}
+              >
+                <SelectTrigger id="autoExtend" className="h-7 text-xs" data-testid="select-auto-extend">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                  <SelectItem value="enabled">Enabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Campaign Duration */}
+            <div className="space-y-0.5">
+              <Label htmlFor="campaignDuration" className="text-[11px] font-medium">Campaign Duration (Days)</Label>
+              <Input
+                id="campaignDuration"
+                type="number"
+                min="1"
+                value={formData.campaignDuration || ""}
+                onChange={(e) => setFormData({ ...formData, campaignDuration: parseInt(e.target.value) || undefined })}
+                placeholder="e.g., 7, 14, 30"
+                className="h-7 text-xs"
+                data-testid="input-campaign-duration"
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+      </div>
+        );
+      })()}
 
       <div className="grid grid-cols-2 gap-4 mt-6">
         <Button 

@@ -164,7 +164,7 @@ export default function Home() {
           <p className="text-xl text-muted-foreground mb-8">
             Free Trial Available - No Credit Needed
           </p>
-          <Link href="/start-campaigns">
+          <Link href="/pricing-trial">
             <Button size="lg" className="text-lg px-12" data-testid="button-start-now">
               Start Now
             </Button>

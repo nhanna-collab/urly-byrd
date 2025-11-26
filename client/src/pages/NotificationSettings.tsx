@@ -277,7 +277,7 @@ export default function NotificationSettings() {
                   name="notifyBudgetWarning"
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between">
-                      <FormLabel className="font-normal">Budget Warnings</FormLabel>
+                      <FormLabel className="font-normal">$ Warnings</FormLabel>
                       <FormControl>
                         <Switch
                           checked={field.value}
@@ -294,7 +294,7 @@ export default function NotificationSettings() {
                   name="notifyBudgetDepleted"
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between">
-                      <FormLabel className="font-normal">Budget Depleted</FormLabel>
+                      <FormLabel className="font-normal">$ Depleted</FormLabel>
                       <FormControl>
                         <Switch
                           checked={field.value}

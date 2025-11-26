@@ -5,7 +5,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { Info, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function OfferCreator() {
   const { toast } = useToast();
@@ -16,13 +17,14 @@ export default function OfferCreator() {
       return await apiRequest("POST", "/api/offers", offerData);
     },
     onSuccess: () => {
+      // Show success toast
       toast({
-        title: "Success!",
-        description: "Offer saved to Stage 1",
+        title: "✅ Offer Saved to Stage 1!",
+        description: "Redirecting to Stage 1...",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/my-offers"] });
-      // Navigate to Offers page (Stage 1)
-      setLocation("/offers");
+      // Navigate to Stage 1
+      setTimeout(() => setLocation("/offers"), 500);
     },
     onError: (error: any) => {
       toast({

@@ -157,7 +157,7 @@ export default function OfferCard({
           {offer.originalPrice && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground line-through">
-                ${offer.originalPrice}
+                ${parseFloat(offer.originalPrice as any).toFixed(2)}
               </span>
             </div>
           )}

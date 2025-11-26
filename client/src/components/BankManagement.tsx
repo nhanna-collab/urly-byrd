@@ -25,7 +25,7 @@ export default function BankManagement() {
   const addFundsMutation = useMutation({
     mutationFn: async (amountInDollars: number) => {
       return await apiRequest("POST", "/api/bank/add-funds", {
-        amountInCents: Math.round(amountInDollars * 100),
+        amountInDollars: amountInDollars,
       });
     },
     onSuccess: () => {
@@ -68,13 +68,13 @@ export default function BankManagement() {
     addFundsMutation.mutate(amount);
   };
 
-  const currentBalance = user?.merchantBank || 0;
-  const balanceInDollars = (currentBalance / 100).toFixed(2);
+  const currentBalance = parseFloat(user?.merchantBank as any || "0");
+  const balanceInDollars = currentBalance.toFixed(2);
 
   const totalSpent = clicks
     .filter(c => c.wasCharged)
-    .reduce((sum, c) => sum + (c.costInCents || 0), 0);
-  const totalSpentInDollars = (totalSpent / 100).toFixed(2);
+    .reduce((sum, c) => sum + parseFloat(c.costInDollars as any || "0"), 0);
+  const totalSpentInDollars = totalSpent.toFixed(2);
 
   return (
     <div className="space-y-6">
@@ -98,7 +98,7 @@ export default function BankManagement() {
           <CardContent>
             <div className="text-4xl font-bold">${balanceInDollars}</div>
             <p className="text-sm text-muted-foreground mt-2">
-              {Math.floor(currentBalance / 165)} new customers available at $1.65 each
+              {Math.floor(currentBalance / 1.65)} new customers available at $1.65 each
             </p>
           </CardContent>
         </Card>
@@ -198,7 +198,7 @@ export default function BankManagement() {
                       {click.offerId.substring(0, 8)}...
                     </TableCell>
                     <TableCell>
-                      ${((click.costInCents || 0) / 100).toFixed(2)}
+                      ${parseFloat(click.costInDollars as any || "0").toFixed(2)}
                     </TableCell>
                     <TableCell>
                       {click.wasCharged ? (

@@ -87,10 +87,10 @@ export default function BudgetDashboard({
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <DollarSign className="h-4 w-4" />
-          Budget Dashboard
+          $ Dashboard
         </CardTitle>
         <CardDescription className="text-xs">
-          Allocate budgets to each of the {offers.length} offer{offers.length !== 1 ? 's' : ''} in this batch
+          Allocate $ to each of the {offers.length} offer{offers.length !== 1 ? 's' : ''} in this batch
         </CardDescription>
       </CardHeader>
       <CardContent>

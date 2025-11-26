@@ -10,6 +10,7 @@ import { generateVerificationCode, sendVerificationEmail } from "./emailUtils";
 import { generateReferralCode, generateReferralUrl, calculateReferralPoints } from "./referralUtils";
 import { formatZodErrors, createFieldError, validateMinimumDuration } from "./validationUtils";
 import { validateOfferAgainstTier, validateActiveOfferCount } from "./tierValidation";
+import { getRipsShareCost, type MembershipTier } from "@shared/tierLimits";
 import { sendIconLinkSms } from "./services/sms";
 import multer from "multer";
 import { z } from "zod";
@@ -49,6 +50,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.set("trust proxy", 1);
   app.use(getSession());
 
+  // Site Access Verification endpoint (for password-protected site)
+  app.post("/api/site-access/verify", async (req, res) => {
+    try {
+      const { password } = req.body;
+      const accessPassword = process.env.SITE_ACCESS_PASSWORD;
+      
+      if (!accessPassword) {
+        // No password configured, allow access
+        return res.json({ success: true });
+      }
+      
+      if (password === accessPassword) {
+        return res.json({ success: true });
+      }
+      
+      return res.status(401).json({ success: false, message: "Incorrect password" });
+    } catch (error) {
+      console.error("Error verifying site access:", error);
+      res.status(500).json({ success: false, message: "Verification failed" });
+    }
+  });
+
   // Registration endpoint
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -80,10 +103,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate membership tier
-      const validTiers = ["NEST", "GLIDE", "SOAR"];
+      const validTiers = ["NEST", "FREEBYRD", "ASCEND", "SOAR"];
       if (!validTiers.includes(membershipTier)) {
         return res.status(400).json({ 
-          message: "Invalid membership tier. Must be NEST, GLIDE, or SOAR." 
+          message: "Invalid membership tier. Must be NEST, FREEBYRD, ASCEND, or SOAR." 
         });
       }
 
@@ -769,6 +792,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const merchantId = req.user.id;
       const offers = await storage.getOffersByMerchant(merchantId);
+      // Prevent caching to ensure UI updates immediately after changes
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.json(offers);
     } catch (error) {
       console.error("Error fetching merchant offers:", error);
@@ -878,12 +905,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Check bank balance if Get New Customers is enabled (only for published offers)
         if (validatedData.getNewCustomersEnabled) {
-          const merchantBank = req.user.merchantBank || 0;
-          const MINIMUM_BALANCE = 165; // 165 cents = $1.65 for at least one new customer
+          const merchantBank = parseFloat(req.user.merchantBank as any || "0");
+          const MINIMUM_BALANCE = 1.65; // $1.65 for at least one new customer
           if (merchantBank < MINIMUM_BALANCE) {
             return res.status(400).json(createFieldError(
               "getNewCustomersEnabled",
-              `Insufficient bank balance ($${(merchantBank / 100).toFixed(2)}). Please add funds to enable customer acquisition.`
+              `Insufficient bank balance ($${merchantBank.toFixed(2)}). Please add funds to enable customer acquisition.`
             ));
           }
         }
@@ -967,6 +994,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Check if budgets are being updated and handle deduction from merchant's available budgets
+      const oldTextBudget = parseFloat(existingOffer.textBudgetDollars as any || "0");
+      const oldRipsBudget = parseFloat(existingOffer.ripsBudgetDollars as any || "0");
+      const newTextBudget = req.body.textBudgetDollars !== undefined ? parseFloat(req.body.textBudgetDollars) : oldTextBudget;
+      const newRipsBudget = req.body.ripsBudgetDollars !== undefined ? parseFloat(req.body.ripsBudgetDollars) : oldRipsBudget;
+      
+      const textDiff = newTextBudget - oldTextBudget;
+      const ripsDiff = newRipsBudget - oldRipsBudget;
+      
+      // If budgets are increasing, check available merchant budgets and deduct
+      if (textDiff > 0 || ripsDiff > 0) {
+        const merchantTextBudget = parseFloat(req.user.merchantTextBudget as any || "0");
+        const merchantRipsBudget = parseFloat(req.user.merchantRipsBudget as any || "0");
+        
+        if (textDiff > merchantTextBudget) {
+          return res.status(400).json({ 
+            message: `Insufficient Text $ available. You need $${Math.round(textDiff)} but only have $${Math.round(merchantTextBudget)} available.` 
+          });
+        }
+        
+        if (ripsDiff > merchantRipsBudget) {
+          return res.status(400).json({ 
+            message: `Insufficient RIPS $ available. You need $${Math.round(ripsDiff)} but only have $${Math.round(merchantRipsBudget)} available.` 
+          });
+        }
+        
+        // Deduct from merchant's available budgets
+        await storage.deductMerchantBudgets(merchantId, textDiff, ripsDiff);
+      }
+      
+      // If budgets are decreasing, return funds to merchant's available budgets
+      if (textDiff < 0 || ripsDiff < 0) {
+        await storage.addToMerchantBudgets(merchantId, Math.abs(textDiff), Math.abs(ripsDiff));
+      }
+      
       // Merge existing offer with updates to get complete offer data
       const updatedData = { ...existingOffer, ...req.body };
       const newStatus = req.body.status || existingOffer.status;
@@ -1029,12 +1091,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Bank balance validation for customer acquisition
         if (updatedData.getNewCustomersEnabled) {
-          const merchantBank = req.user.merchantBank || 0;
-          const MINIMUM_BALANCE = 7;
+          const merchantBank = parseFloat(req.user.merchantBank as any || "0");
+          const MINIMUM_BALANCE = 1.65;
           if (merchantBank < MINIMUM_BALANCE) {
             return res.status(400).json(createFieldError(
               "getNewCustomersEnabled",
-              `Insufficient bank balance ($${(merchantBank / 100).toFixed(2)}). Please add funds to enable customer acquisition.`
+              `Insufficient bank balance ($${merchantBank.toFixed(2)}). Please add funds to enable customer acquisition.`
             ));
           }
         }
@@ -1119,17 +1181,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all offers for this merchant
       const allOffers = await storage.getOffersByMerchant(merchantId);
       
-      // Filter batch offers based on batchPendingSelection AND completionStage
-      // Stage 1 shows offers with completionStage="folder1", Stage 2 shows "folder2"
-      const batchOffers = allOffers.filter((offer: any) => 
-        !offer.isDeleted && 
-        offer.batchPendingSelection === true &&
-        (stage === "stage1" ? offer.completionStage === "folder1" : offer.completionStage === "folder2")
-      );
+      // Stage 1: Delete ALL draft offers (both single drafts and batch offers)
+      // Stage 2: Delete batch offers in folder2
+      const offersToDelete = allOffers.filter((offer: any) => {
+        if (offer.isDeleted) return false;
+        
+        if (stage === "stage1") {
+          // Stage 1: Include both single drafts (batchPendingSelection=false, status=draft)
+          // AND batch offers (batchPendingSelection=true, completionStage=folder1)
+          return (offer.status === "draft" && !offer.batchPendingSelection) ||
+                 (offer.batchPendingSelection === true && offer.completionStage === "folder1");
+        } else {
+          // Stage 2: Only batch offers in folder2
+          return offer.batchPendingSelection === true && offer.completionStage === "folder2";
+        }
+      });
 
       // Delete all matching offers
       let deletedCount = 0;
-      for (const offer of batchOffers) {
+      for (const offer of offersToDelete) {
         const deleted = await storage.deleteOffer(offer.id, merchantId);
         if (deleted) {
           deletedCount++;
@@ -1137,12 +1207,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ 
-        message: `Successfully deleted ${deletedCount} batch offer(s) from ${stage}`,
+        message: `Successfully deleted ${deletedCount} offer(s) from ${stage}`,
         count: deletedCount 
       });
     } catch (error) {
-      console.error("Error deleting all batch offers:", error);
-      res.status(500).json({ message: "Failed to delete batch offers" });
+      console.error("Error deleting all offers:", error);
+      res.status(500).json({ message: "Failed to delete offers" });
     }
   });
 
@@ -1692,6 +1762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Referral system endpoints
   
   // Create a referral and send SMS to friend
+  // RIPS: Deducts share cost from merchant's RIPS budget
   app.post("/api/referrals/create", async (req, res) => {
     try {
       const { offerId, referrerPhone, referrerZip, friendPhone, friendZip, viewedAt } = req.body;
@@ -1706,7 +1777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Offer not found" });
       }
 
-      // Get merchant details to check location
+      // Get merchant details to check location and tier
       const merchant = await storage.getUserById(offer.merchantId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -1718,6 +1789,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ 
           message: "Your friend must be within 10 miles of this merchant to receive this deal" 
         });
+      }
+
+      // RIPS: Check if offer has Get New Customers enabled and deduct share cost
+      let shareCostDeducted = 0;
+      if (offer.getNewCustomersEnabled) {
+        const merchantTier = (merchant.membershipTier || "NEST") as MembershipTier;
+        const shareCost = getRipsShareCost(merchantTier);
+        const currentRipsBudget = parseFloat(merchant.merchantRipsBudget as any) || 0;
+
+        // Check if merchant has enough RIPS budget
+        if (currentRipsBudget < shareCost) {
+          return res.status(400).json({ 
+            message: "Merchant's RIPS budget is too low to process this share. Please contact the business." 
+          });
+        }
+
+        // Deduct share cost from merchant's RIPS budget
+        await storage.deductMerchantBudgets(merchant.id, 0, shareCost);
+        shareCostDeducted = shareCost;
+
+        console.log(`\n💰 RIPS SHARE COST DEDUCTED`);
+        console.log(`Merchant: ${merchant.businessName} (${merchantTier})`);
+        console.log(`Share Cost: $${shareCost.toFixed(2)}`);
+        console.log(`Previous RIPS Budget: $${currentRipsBudget.toFixed(2)}`);
+        console.log(`New RIPS Budget: $${(currentRipsBudget - shareCost).toFixed(2)}\n`);
       }
 
       // Generate unique referral code
@@ -1738,7 +1834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Build SMS message with referral link
-      const smsMessage = `🎁 Your friend shared a deal with you!\n\n${offer.title}\n\nCheck it out: ${referralUrl}\n\n- Urly Byrd`;
+      const smsMessage = `Your friend shared a deal with you!\n\n${offer.title}\n\nCheck it out: ${referralUrl}\n\n- Urly Byrd`;
 
       // TODO: Send SMS with Twilio
       // For now, log in development mode
@@ -1758,6 +1854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Referral created and SMS sent!",
         referralCode,
         referralUrl,
+        shareCostDeducted,
         // Remove in production with Twilio
         devMessage: process.env.NODE_ENV === 'development' ? smsMessage : undefined,
       });
@@ -1989,18 +2086,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/bank/add-funds", isAuthenticated, async (req: any, res) => {
     try {
       const merchantId = req.user.id;
-      const { amountInCents } = req.body;
+      const { amountInDollars } = req.body;
       
-      if (!amountInCents || amountInCents <= 0) {
+      if (!amountInDollars || amountInDollars <= 0) {
         return res.status(400).json({ message: "Invalid amount" });
       }
       
-      if (amountInCents > 100000) { // Max $1,000
+      if (amountInDollars > 1000) { // Max $1,000
         return res.status(400).json({ message: "Maximum $1,000 per transaction" });
       }
       
       // Add funds to merchant bank
-      const updatedUser = await storage.addMerchantBankFunds(merchantId, amountInCents);
+      const updatedUser = await storage.addMerchantBankFunds(merchantId, amountInDollars);
       
       if (!updatedUser) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -2017,6 +2114,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Allocate budget from bank to Text and RIPS
+  app.post("/api/bank/allocate", isAuthenticated, async (req: any, res) => {
+    try {
+      const merchantId = req.user.id;
+      const { textBudget, ripsBudget } = req.body;
+      
+      if (textBudget < 0 || ripsBudget < 0) {
+        return res.status(400).json({ message: "Budget amounts cannot be negative" });
+      }
+      
+      const updatedUser = await storage.allocateMerchantBudget(
+        merchantId,
+        textBudget,
+        ripsBudget
+      );
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      
+      res.json({
+        success: true,
+        merchantBank: updatedUser.merchantBank,
+        merchantTextBudget: updatedUser.merchantTextBudget,
+        merchantRipsBudget: updatedUser.merchantRipsBudget,
+        message: "Budget allocated successfully"
+      });
+    } catch (error: any) {
+      console.error("Error allocating budget:", error);
+      res.status(400).json({ message: error.message || "Failed to allocate budget" });
+    }
+  });
+  
+  // Transfer funds from bank to text budget (charges tier rate per text)
+  app.post("/api/bank/transfer-to-text", isAuthenticated, async (req: any, res) => {
+    try {
+      const merchantId = req.user.id;
+      const { textCount } = req.body; // positive = buy texts, negative = sell texts back
+      
+      if (typeof textCount !== 'number' || textCount === 0) {
+        return res.status(400).json({ message: "Invalid text count" });
+      }
+      
+      const user = await storage.getUserById(merchantId);
+      if (!user) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      
+      // Get text pricing for the merchant's tier
+      const tier = (user.membershipTier || "NEST") as MembershipTier;
+      const { getTextPricing } = await import("@shared/tierLimits");
+      const textPricing = getTextPricing(tier);
+      const costPerText = textPricing.costPerText;
+      
+      const currentBank = parseFloat(user.merchantBank as any || "0");
+      const currentTexts = parseFloat(user.merchantTextBudget as any || "0");
+      
+      const totalCost = Math.abs(textCount) * costPerText;
+      
+      if (textCount > 0) {
+        // Buying texts - check if enough bank balance
+        if (currentBank < totalCost) {
+          return res.status(400).json({ message: `Insufficient bank balance. Need $${totalCost.toFixed(2)} for ${textCount} texts at ${(costPerText * 100).toFixed(2)}¢ each.` });
+        }
+      } else {
+        // Selling texts back - check if enough texts
+        if (currentTexts < Math.abs(textCount)) {
+          return res.status(400).json({ message: "Insufficient text balance" });
+        }
+      }
+      
+      // Update both balances
+      const newBank = textCount > 0 ? currentBank - totalCost : currentBank + totalCost;
+      const newTexts = currentTexts + textCount;
+      
+      const updatedUser = await storage.updateUser(merchantId, {
+        merchantBank: newBank.toString(),
+        merchantTextBudget: newTexts.toString(),
+      });
+      
+      res.json({
+        success: true,
+        merchantBank: updatedUser?.merchantBank,
+        merchantTextBudget: updatedUser?.merchantTextBudget,
+        costPerText,
+        totalCost,
+      });
+    } catch (error) {
+      console.error("Error transferring to text:", error);
+      res.status(500).json({ message: "Failed to transfer funds" });
+    }
+  });
+
+  // Transfer funds between bank and RIPS ($1 increments)
+  app.post("/api/bank/transfer-to-rips", isAuthenticated, async (req: any, res) => {
+    try {
+      const merchantId = req.user.id;
+      const { amount } = req.body; // positive = bank to RIPS, negative = RIPS to bank
+      
+      if (typeof amount !== 'number' || amount === 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+      
+      const user = await storage.getUserById(merchantId);
+      if (!user) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      
+      const currentBank = parseFloat(user.merchantBank as any || "0");
+      const currentRips = parseFloat(user.merchantRipsBudget as any || "0");
+      
+      if (amount > 0) {
+        // Transfer from bank to RIPS
+        if (currentBank < amount) {
+          return res.status(400).json({ message: "Insufficient bank balance" });
+        }
+      } else {
+        // Transfer from RIPS to bank
+        if (currentRips < Math.abs(amount)) {
+          return res.status(400).json({ message: "Insufficient RIPS balance" });
+        }
+      }
+      
+      // Update both balances
+      const newBank = currentBank - amount;
+      const newRips = currentRips + amount;
+      
+      const updatedUser = await storage.updateUser(merchantId, {
+        merchantBank: newBank.toString(),
+        merchantRipsBudget: newRips.toString(),
+      });
+      
+      res.json({
+        success: true,
+        merchantBank: updatedUser?.merchantBank,
+        merchantRipsBudget: updatedUser?.merchantRipsBudget,
+      });
+    } catch (error) {
+      console.error("Error transferring funds:", error);
+      res.status(500).json({ message: "Failed to transfer funds" });
+    }
+  });
+
   // Get merchant's customer acquisition transaction history
   app.get("/api/bank/transactions", isAuthenticated, async (req: any, res) => {
     try {

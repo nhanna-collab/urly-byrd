@@ -10,7 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Folder, Clock, Trash2, Filter, GitBranch, Copy, Lock, Search, Rocket, Flame, Microscope, Calendar, CheckCircle, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Plus, Folder, Clock, Trash2, Filter, GitBranch, Copy, Lock, Search, Rocket, Flame, Microscope, Calendar, CheckCircle, ArrowUp, ArrowDown, ArrowUpDown, Pin, PinOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useMemo, useEffect, useRef } from "react";
 import OffersToolbar from "@/components/OffersToolbar";
@@ -84,7 +84,7 @@ function calculateFolderMetrics(folder: CampaignFolder, folderOffers: Offer[]): 
   const totalClicks = folderOffers.reduce((sum, offer) => sum + (offer.unitsSold || 0), 0);
   const totalMaxClicks = folderOffers.reduce((sum, offer) => sum + (offer.maxClicksAllowed || 0), 0);
   const ctr = totalViews > 0 ? (totalClicks / totalViews) * 100 : 0;
-  const totalBudget = folderOffers.reduce((sum, offer) => sum + (offer.clickBudgetDollars || 0), 0);
+  const totalBudget = folderOffers.reduce((sum, offer) => sum + parseFloat(offer.clickBudgetDollars as any || "0"), 0);
   
   const now = Date.now();
   const durations = folderOffers
@@ -181,15 +181,15 @@ function FolderList({
           comparison = a.avgDuration - b.avgDuration;
           break;
         case "textBudget":
-          // Sum text budgets for all offers in folder
-          const textBudgetA = Object.values(offersByFolder[a.id] || []).reduce((sum: number, offer: any) => sum + (offer.textBudgetDollars || 0), 0);
-          const textBudgetB = Object.values(offersByFolder[b.id] || []).reduce((sum: number, offer: any) => sum + (offer.textBudgetDollars || 0), 0);
+          // Sum text budgets (in dollars) for all offers in folder
+          const textBudgetA = Object.values(offersByFolder[a.id] || []).reduce((sum: number, offer: any) => sum + parseFloat(offer.textBudgetDollars || "0"), 0);
+          const textBudgetB = Object.values(offersByFolder[b.id] || []).reduce((sum: number, offer: any) => sum + parseFloat(offer.textBudgetDollars || "0"), 0);
           comparison = textBudgetA - textBudgetB;
           break;
         case "ripsBudget":
-          // Sum RIPS budgets for all offers in folder
-          const ripsBudgetA = Object.values(offersByFolder[a.id] || []).reduce((sum: number, offer: any) => sum + (offer.ripsBudgetDollars || 0), 0);
-          const ripsBudgetB = Object.values(offersByFolder[b.id] || []).reduce((sum: number, offer: any) => sum + (offer.ripsBudgetDollars || 0), 0);
+          // Sum RIPS budgets (in dollars) for all offers in folder
+          const ripsBudgetA = Object.values(offersByFolder[a.id] || []).reduce((sum: number, offer: any) => sum + parseFloat(offer.ripsBudgetDollars || "0"), 0);
+          const ripsBudgetB = Object.values(offersByFolder[b.id] || []).reduce((sum: number, offer: any) => sum + parseFloat(offer.ripsBudgetDollars || "0"), 0);
           comparison = ripsBudgetA - ripsBudgetB;
           break;
       }
@@ -286,6 +286,11 @@ function FolderList({
                             <h4 className="font-semibold text-lg" data-testid={`text-item-${offer.id}`}>
                               {offer.title}
                             </h4>
+                            {offer.menuItem && (
+                              <p className="text-sm font-medium text-foreground" data-testid={`text-product-${offer.id}`}>
+                                Product: {offer.menuItem}
+                              </p>
+                            )}
                             <p className="text-sm text-muted-foreground" data-testid={`text-description-${offer.id}`}>
                               {offer.description}
                             </p>
@@ -413,7 +418,7 @@ function FolderList({
                                 </span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <span className="text-xs text-muted-foreground">Budget:</span>
+                                <span className="text-xs text-muted-foreground">$:</span>
                                 <span className="text-xs font-semibold" data-testid={`text-budget-${offer.id}`}>
                                   ${offer.clickBudgetDollars || 0}
                                 </span>
@@ -798,6 +803,7 @@ export default function Offers() {
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isApplyingQuickInputs, setIsApplyingQuickInputs] = useState(false);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [stickyOfferId, setStickyOfferId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Debounce search query to prevent expensive calculations on every keystroke
@@ -1206,9 +1212,12 @@ export default function Offers() {
   const handleDeleteDraft = async (offerId: string) => {
     try {
       // Permanently archive draft offers - throw them out completely
-      const response = await fetch(`/api/offers/${offerId}/permanent-delete`, {
+      const response = await fetch(`/api/offers/${offerId}/permanent`, {
         method: 'DELETE',
         credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
       });
 
       if (!response.ok) {
@@ -1220,7 +1229,12 @@ export default function Offers() {
         description: "The draft template has been permanently removed.",
       });
 
-      refetchOffers();
+      // Force complete cache invalidation and refetch with no cache
+      await queryClient.invalidateQueries({ queryKey: ["/api/my-offers"] });
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/my-offers"],
+        type: 'active',
+      });
     } catch (error) {
       console.error('Error archiving draft:', error);
       toast({
@@ -1236,13 +1250,22 @@ export default function Offers() {
       const response = await apiRequest("DELETE", `/api/offers/batch/delete-all/${stage}`);
       return await response.json();
     },
-    onSuccess: (data: { message: string; count: number }, stage) => {
+    onSuccess: async (data: { message: string; count: number }, stage) => {
       toast({
         title: "All Staged Offers Deleted",
         description: `Successfully deleted ${data.count} offer(s) from ${stage === "stage1" ? "Stage 1" : "Stage 2"}.`,
       });
-      refetchOffers();
-      refetchFolders();
+      // Force complete cache invalidation and refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/my-offers"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaign-folders"] });
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/my-offers"],
+        type: 'active',
+      });
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/campaign-folders"],
+        type: 'active',
+      });
       setShowDeleteAllDialog(false);
     },
     onError: (error: Error) => {
@@ -1325,7 +1348,7 @@ export default function Offers() {
     }
   };
 
-  // Handle applying budgets and metrics to batch offers
+  // Handle applying budgets and metrics to batch offers or sticky offer
   const handleApplyBudgets = async (config: { 
     textBudget: number; 
     ripsBudget: number;
@@ -1336,13 +1359,23 @@ export default function Offers() {
     setIsApplyingQuickInputs(true); // Reuse the same loading state
     
     try {
-      // Get filtered batch offers
-      const targetOffers = filteredOffers.filter(offer => offer.batchPendingSelection);
+      let targetOffers: Offer[] = [];
+      
+      // Priority: If a sticky offer exists, apply ONLY to that offer
+      if (stickyOfferId) {
+        const stickyOffer = offers.find(o => o.id === stickyOfferId);
+        if (stickyOffer) {
+          targetOffers = [stickyOffer];
+        }
+      } else {
+        // Otherwise, get filtered batch offers (original behavior)
+        targetOffers = filteredOffers.filter(offer => offer.batchPendingSelection);
+      }
 
       if (targetOffers.length === 0) {
         toast({
           title: "No Offers to Update",
-          description: "No offers match your current filters.",
+          description: stickyOfferId ? "Sticky offer not found." : "No offers match your current filters.",
           variant: "destructive",
         });
         return;
@@ -1361,12 +1394,19 @@ export default function Offers() {
 
       await Promise.all(updatePromises);
 
+      const targetLabel = stickyOfferId ? 'sticky offer' : `${targetOffers.length} offer${targetOffers.length !== 1 ? 's' : ''}`;
+      
+      // FORCE complete cache clear and refetch
+      queryClient.removeQueries({ queryKey: ["/api/my-offers"] });
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/my-offers"],
+        type: 'all',
+      });
+      
       toast({
         title: "Success! ✅",
-        description: `Updated budgets and metrics for ${targetOffers.length} offer${targetOffers.length !== 1 ? 's' : ''}`,
+        description: `Updated budgets and metrics for ${targetLabel}`,
       });
-
-      await queryClient.invalidateQueries({ queryKey: ["/api/my-offers"] });
     } catch (error: any) {
       console.error('Error applying budgets:', error);
       toast({
@@ -1492,10 +1532,10 @@ export default function Offers() {
             comparison = durationA - durationB;
             break;
           case "textBudget":
-            comparison = (a.textBudgetDollars || 0) - (b.textBudgetDollars || 0);
+            comparison = parseFloat(a.textBudgetDollars as any || "0") - parseFloat(b.textBudgetDollars as any || "0");
             break;
           case "ripsBudget":
-            comparison = (a.ripsBudgetDollars || 0) - (b.ripsBudgetDollars || 0);
+            comparison = parseFloat(a.ripsBudgetDollars as any || "0") - parseFloat(b.ripsBudgetDollars as any || "0");
             break;
           case "ctr":
             // CTR calculation: (clicks / views) * 100
@@ -1653,31 +1693,22 @@ export default function Offers() {
                       Duration
                     </Button>
                     <Button
-                      variant={sortKey === "bank" ? "default" : "outline"}
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => setSortKey("bank")}
-                      data-testid="button-sort-bank"
-                    >
-                      Bank
-                    </Button>
-                    <Button
                       variant={sortKey === "textBudget" ? "default" : "outline"}
                       size="sm"
-                      className="h-7 text-xs"
+                      className="h-7 text-xs w-20"
                       onClick={() => setSortKey("textBudget")}
                       data-testid="button-sort-text-budget"
                     >
-                      Text Budget
+                      $ Text
                     </Button>
                     <Button
                       variant={sortKey === "ripsBudget" ? "default" : "outline"}
                       size="sm"
-                      className="h-7 text-xs"
+                      className="h-7 text-xs w-20"
                       onClick={() => setSortKey("ripsBudget")}
                       data-testid="button-sort-rips-budget"
                     >
-                      RIPS Budget
+                      $ RIPS
                     </Button>
                   </div>
                 </CardContent>
@@ -1692,6 +1723,9 @@ export default function Offers() {
                   filteredCount={filteredStage1Count}
                   hasFilters={hasActiveFilters}
                   compact={true}
+                  availableTextBudget={parseFloat(user?.merchantTextBudget as any || "0")}
+                  availableRipsBudget={parseFloat(user?.merchantRipsBudget as any || "0")}
+                  availableBank={parseFloat(user?.merchantBank as any || "0")}
                 />
               </div>
 
@@ -1790,12 +1824,20 @@ export default function Offers() {
                   </Button>
                 </div>
                 
-                <div ref={scrollContainerRef} className="h-[600px] overflow-y-auto">
+                <div ref={scrollContainerRef} className="h-[600px] overflow-y-auto relative">
                 <div className="space-y-4 pr-2">
                   {allStage1Offers.map((offer) => {
                     const offerCode = generateOfferCode(offer);
+                    const isSticky = stickyOfferId === offer.id;
+                    const hasBudgetData = offer.maxClicksAllowed || offer.clickBudgetDollars;
+                    
                     return (
-                      <Card key={offer.id} data-testid={`offer-card-${offer.id}`} className="bg-white dark:bg-slate-900">
+                      <Card 
+                        key={offer.id} 
+                        data-testid={`offer-card-${offer.id}`} 
+                        className={`bg-white dark:bg-slate-900 ${isSticky ? 'fixed top-24 left-4 w-1/2 z-50 shadow-2xl ring-4 ring-primary cursor-pointer' : ''}`}
+                        onClick={isSticky ? () => window.location.href = '/' : undefined}
+                      >
                         <CardHeader className="p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
@@ -1803,6 +1845,12 @@ export default function Offers() {
                               <div className="text-lg font-bold text-primary mb-2" data-testid={`offer-title-${offer.id}`}>
                                 {offer.title}
                               </div>
+                              {/* Product/Menu Item (prominently displayed) */}
+                              {offer.menuItem && (
+                                <div className="text-sm font-medium text-foreground mb-1">
+                                  {offer.menuItem}
+                                </div>
+                              )}
                               <div className="font-mono text-xs text-muted-foreground">
                                 {offerCode}
                               </div>
@@ -1829,6 +1877,54 @@ export default function Offers() {
                             </div>
                           </div>
                         </CardHeader>
+                        
+                        {/* Budget Display & Sticky Button */}
+                        {(hasBudgetData || isSticky) && (
+                          <CardContent className="px-4 pb-4 pt-0">
+                            <div className="flex items-end justify-between">
+                              {/* Budget Info - Left side */}
+                              <div className="flex-1">
+                                {hasBudgetData && (
+                                  <div className="space-y-1 text-xs">
+                                    {offer.maxClicksAllowed && offer.maxClicksAllowed > 0 && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium text-muted-foreground">Max Clicks:</span>
+                                        <span className="font-bold">{offer.maxClicksAllowed}</span>
+                                      </div>
+                                    )}
+                                    {offer.ripsBudgetDollars && parseFloat(offer.ripsBudgetDollars as any) > 0 && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium text-muted-foreground">RIPS $:</span>
+                                        <span className="font-bold">${parseFloat(offer.ripsBudgetDollars as any).toFixed(2)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Sticky Button - Bottom left */}
+                              <Button
+                                size="sm"
+                                variant={isSticky ? "default" : "outline"}
+                                onClick={() => setStickyOfferId(isSticky ? null : offer.id)}
+                                data-testid={`button-sticky-${offer.id}`}
+                                className="ml-2"
+                              >
+                                {isSticky ? (
+                                  <>
+                                    <PinOff className="h-4 w-4 mr-1" />
+                                    Unstick
+                                  </>
+                                ) : (
+                                  <>
+                                    <Pin className="h-4 w-4 mr-1" />
+                                    Make Sticky
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        )}
                       </Card>
                     );
                   })}
@@ -2034,31 +2130,22 @@ export default function Offers() {
                         Duration
                       </Button>
                       <Button
-                        variant={sortKey === "bank" ? "default" : "outline"}
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => setSortKey("bank")}
-                        data-testid="button-sort-bank"
-                      >
-                        Bank
-                      </Button>
-                      <Button
                         variant={sortKey === "textBudget" ? "default" : "outline"}
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs w-20"
                         onClick={() => setSortKey("textBudget")}
                         data-testid="button-sort-text-budget"
                       >
-                        Text Budget
+                        $ Text
                       </Button>
                       <Button
                         variant={sortKey === "ripsBudget" ? "default" : "outline"}
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs w-20"
                         onClick={() => setSortKey("ripsBudget")}
                         data-testid="button-sort-rips-budget"
                       >
-                        RIPS Budget
+                        $ RIPS
                       </Button>
                     </div>
                   </div>
@@ -2156,12 +2243,20 @@ export default function Offers() {
                   </Button>
                 </div>
                 
-                <div ref={scrollContainerRef} className="h-[600px] overflow-y-auto">
+                <div ref={scrollContainerRef} className="h-[600px] overflow-y-auto relative">
                 <div className="space-y-4 pr-2">
                   {allFolderOffers.map((offer) => {
                     const offerCode = generateOfferCode(offer);
+                    const isSticky = stickyOfferId === offer.id;
+                    const hasBudgetData = offer.maxClicksAllowed || offer.clickBudgetDollars;
+                    
                     return (
-                      <Card key={offer.id} data-testid={`offer-card-${offer.id}`} className="bg-white dark:bg-slate-900">
+                      <Card 
+                        key={offer.id} 
+                        data-testid={`offer-card-${offer.id}`} 
+                        className={`bg-white dark:bg-slate-900 ${isSticky ? 'fixed top-24 left-4 w-1/2 z-50 shadow-2xl ring-4 ring-primary cursor-pointer' : ''}`}
+                        onClick={isSticky ? () => window.location.href = '/' : undefined}
+                      >
                         <CardHeader className="p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
@@ -2169,6 +2264,12 @@ export default function Offers() {
                               <div className="text-lg font-bold text-primary mb-2" data-testid={`offer-title-${offer.id}`}>
                                 {offer.title}
                               </div>
+                              {/* Product/Menu Item (prominently displayed) */}
+                              {offer.menuItem && (
+                                <div className="text-sm font-medium text-foreground mb-1">
+                                  {offer.menuItem}
+                                </div>
+                              )}
                               <div className="font-mono text-xs text-muted-foreground">
                                 {offerCode}
                               </div>
@@ -2195,6 +2296,54 @@ export default function Offers() {
                             </div>
                           </div>
                         </CardHeader>
+                        
+                        {/* Budget Display & Sticky Button */}
+                        {(hasBudgetData || isSticky) && (
+                          <CardContent className="px-4 pb-4 pt-0">
+                            <div className="flex items-end justify-between">
+                              {/* Budget Info - Left side */}
+                              <div className="flex-1">
+                                {hasBudgetData && (
+                                  <div className="space-y-1 text-xs">
+                                    {offer.maxClicksAllowed && offer.maxClicksAllowed > 0 && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium text-muted-foreground">Max Clicks:</span>
+                                        <span className="font-bold">{offer.maxClicksAllowed}</span>
+                                      </div>
+                                    )}
+                                    {offer.ripsBudgetDollars && parseFloat(offer.ripsBudgetDollars as any) > 0 && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium text-muted-foreground">RIPS $:</span>
+                                        <span className="font-bold">${parseFloat(offer.ripsBudgetDollars as any).toFixed(2)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Sticky Button - Bottom left */}
+                              <Button
+                                size="sm"
+                                variant={isSticky ? "default" : "outline"}
+                                onClick={() => setStickyOfferId(isSticky ? null : offer.id)}
+                                data-testid={`button-sticky-${offer.id}`}
+                                className="ml-2"
+                              >
+                                {isSticky ? (
+                                  <>
+                                    <PinOff className="h-4 w-4 mr-1" />
+                                    Unstick
+                                  </>
+                                ) : (
+                                  <>
+                                    <Pin className="h-4 w-4 mr-1" />
+                                    Make Sticky
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        )}
                       </Card>
                     );
                   })}
@@ -2348,20 +2497,20 @@ export default function Offers() {
                   <Button
                     variant={sortKey === "textBudget" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs"
+                    className="h-7 text-xs w-20"
                     onClick={() => setSortKey("textBudget")}
                     data-testid="button-sort-text-budget"
                   >
-                    Text Budget
+                    $ Text
                   </Button>
                   <Button
                     variant={sortKey === "ripsBudget" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs"
+                    className="h-7 text-xs w-20"
                     onClick={() => setSortKey("ripsBudget")}
                     data-testid="button-sort-rips-budget"
                   >
-                    RIPS Budget
+                    $ RIPS
                   </Button>
                 </div>
               </div>

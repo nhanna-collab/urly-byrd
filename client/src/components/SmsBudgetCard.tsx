@@ -41,17 +41,16 @@ export default function SmsBudgetCard() {
   const isAtLimit = usagePercentage >= 100;
 
   // Format cost per text
-  const formatCost = (cents: number) => {
-    if (cents === 0) return "Free";
-    if (cents < 1) return `${cents.toFixed(2)}¢`;
-    return `${cents.toFixed(1)}¢`;
+  const formatCost = (dollars: number) => {
+    if (dollars === 0) return "Free";
+    return `$${dollars.toFixed(3)}`;
   };
 
   // Tier display names
   const tierDisplayNames: Record<string, string> = {
     NEST: "Nest (No SMS)",
     FREEBYRD: "Free Byrd (Pay-per-text)",
-    GLIDE: "Glide",
+    ASCEND: "Ascend",
     SOAR: "Soar",
     SOAR_PLUS: "Soar Plus",
     SOAR_PLATINUM: "Soar Platinum",

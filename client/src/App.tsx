@@ -38,6 +38,7 @@ import MerchantsList from "@/pages/MerchantsList";
 import Information from "@/pages/Information";
 import NotificationSettings from "@/pages/NotificationSettings";
 import Terminology from "@/pages/Terminology";
+import PricingTrial from "@/pages/PricingTrial";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -48,7 +49,7 @@ function Router() {
     <>
       <ScrollToTop />
       <Switch>
-        <Route path="/" component={OfferCreator} />
+        <Route path="/" component={Home} />
         <Route path="/flash-marketing" component={FlashMarketing} />
         <Route path="/start-campaigns" component={StartCampaigns} />
         <Route path="/offers" component={Offers} />
@@ -82,6 +83,7 @@ function Router() {
         <Route path="/information" component={Information} />
         <Route path="/settings/notifications" component={NotificationSettings} />
         <Route path="/terminology" component={Terminology} />
+        <Route path="/pricing-trial" component={PricingTrial} />
         <Route component={NotFound} />
       </Switch>
     </>
